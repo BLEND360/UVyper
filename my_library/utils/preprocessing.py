@@ -19,21 +19,21 @@ pd.set_option('display.max_rows', 200)
 
 
 class Preprocessing:
-    def __init__(self, data):
+    def __init__(self, data):  # to read the data
         self.df = pd.read_csv(data)
 
-    def print(self):
+    def print(self):  # prints the data
         print(self.df)
         # return self.df
 
-    def get_df(self):
+    def get_df(self):  # returns the data
         return self.df
 
-    def print_shape(self):
+    def print_shape(self):  # prints the shape of the data
         print(self.df.shape)
         return self.df.shape
 
-    def vyper(self, dv):
+    def vyper(self, dv):  # model vyper
         m = Model(
             data=self.df,
             dependent_variable=dv,
@@ -44,7 +44,7 @@ class Preprocessing:
         return m
 
     @staticmethod
-    def show_variable_types(m):
+    def show_variable_types(m):  # shows the variable types
         return m.variables.show_types()
 
     @staticmethod
@@ -55,14 +55,14 @@ class Preprocessing:
 
         return final_bounds
 
-    def recoding(self, bounds, min_bin_size, dv, ordinal_variables=None):
+    def recoding(self, bounds, min_bin_size, dv,
+                 ordinal_variables=None):  # removed excluded_variables,numeric_variables,binary_variables,category_variables as parameters and introduced dependent variable as parameter
 
         if ordinal_variables is None:
             ordinal_variables = []
         m = self.vyper(dv)
         original_variables = m.data.columns.to_list()
         excluded_variables = m.variables.get_excluded_variables()
-        # ordinal_variables = []
         category_variables = m.variables.get_categorical_variables()
         numeric_variables = m.variables.get_numeric_variables()
         binary_variables = m.variables.get_binary_variables()
@@ -139,7 +139,7 @@ class Preprocessing:
         )
 
         for var in category_variables:
-            if var in self.df.columns:
+            if var in self.df.columns:  # changed from data_df_orig.columns to self.df.columns
                 N_missing = sum(data_df_orig[var].isna())
                 tab = data_df_orig[var].value_counts(ascending=False)
 
@@ -164,7 +164,7 @@ class Preprocessing:
                         )
                         counter2 = 0
 
-        return self.df, data_df_orig, numeric_variables, binary_variables
+        return self.df, data_df_orig, numeric_variables, binary_variables  # added numeric_variables, binary_variables as return values
 
     def missing_zero_values_table(self):
 
@@ -178,10 +178,8 @@ class Preprocessing:
         missing_table["Total Zero + Missing Values"] = (
                 missing_table["Zero Values"] + missing_table["Missing Values"]
         )
-        missing_table["% Total Zero + Missing Values"] = (
-                                                                 missing_table["Total Zero + Missing Values"] / len(
-                                                             self.df)
-                                                         ) * 100
+        missing_table["% Total Zero + Missing Values"] = (missing_table["Total Zero + Missing Values"] / len(
+            self.df)) * 100
         missing_table["Data Type"] = self.df.dtypes
         missing_table = (
             missing_table[missing_table.iloc[:, 1] != 0]
@@ -216,7 +214,7 @@ class Preprocessing:
                 if i in self.df.columns:
                     self.df[i].fillna("ffill", inplace=True)
 
-    def correlation(self, nv, threshold):
+    def correlation(self, nv, threshold):  # nv = numeric variables which is returned from recoding function
         cols = self.df.columns
         newcol = []
         for col in nv:
@@ -239,7 +237,7 @@ class Preprocessing:
         print("List of columns removed from the self.df : ", list1)
         return pd.DataFrame(self.df)
 
-    def outlier_detection(self):
+    def outlier_detection(self):  # IQR method has been used instead of mahalanobis distance
         q1 = self.df.quantile(0.25)
         q3 = self.df.quantile(0.75)
         iqr = q3 - q1
@@ -261,10 +259,10 @@ class Preprocessing:
     #     var_to_keep = list(
     #         var_clust_model.rsquare.sort_values(by=['Cluster', 'RS_Ratio']).groupby('Cluster').first().Variable)
     #     return (var_clust_model.rsquare,
-    #             var_to_keep)  #from here need to get the variable within a cluster with the lowest RS_Ratio and pick that one
+    #             var_to_keep)
+    #             #from here need to get the variable within a cluster with the lowest RS_Ratio and pick that one
 
-    def tocsv(self,filename):
-        return self.df.to_csv(filename+'_preprocessed.csv',index=False)
-
-
-
+    def tocsv(self,
+              filename):
+        # save the preprocessed data to csv file with the name of the original file excluding .csv  + _preprocessed
+        return self.df.to_csv(filename + '_preprocessed.csv', index=False)
