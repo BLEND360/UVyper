@@ -145,6 +145,7 @@ class Kmeans:
         plt.title('The Elbow Method using Inertia for Maximum Size Selection,Cluster_Num=' + str(cluster_num))
         plt.show()
 
+    # added the below three functions to the class
     def kmeans(self, n_clusters, min_size, max_size):
         kmeanModel = KMeansConstrained(
             n_clusters=n_clusters,
