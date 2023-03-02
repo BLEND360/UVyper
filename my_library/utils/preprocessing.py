@@ -24,9 +24,14 @@ class Preprocessing:
 
     def print(self):
         print(self.df)
+        # return self.df
+
+    def get_df(self):
+        return self.df
 
     def print_shape(self):
         print(self.df.shape)
+        return self.df.shape
 
     def vyper(self, dv):
         m = Model(
@@ -50,12 +55,14 @@ class Preprocessing:
 
         return final_bounds
 
-    def recoding(self, bounds, min_bin_size, dv):
+    def recoding(self, bounds, min_bin_size, dv, ordinal_variables=None):
 
+        if ordinal_variables is None:
+            ordinal_variables = []
         m = self.vyper(dv)
         original_variables = m.data.columns.to_list()
         excluded_variables = m.variables.get_excluded_variables()
-        ordinal_variables = []
+        # ordinal_variables = []
         category_variables = m.variables.get_categorical_variables()
         numeric_variables = m.variables.get_numeric_variables()
         binary_variables = m.variables.get_binary_variables()
@@ -255,6 +262,9 @@ class Preprocessing:
     #         var_clust_model.rsquare.sort_values(by=['Cluster', 'RS_Ratio']).groupby('Cluster').first().Variable)
     #     return (var_clust_model.rsquare,
     #             var_to_keep)  #from here need to get the variable within a cluster with the lowest RS_Ratio and pick that one
+
+    def tocsv(self,filename):
+        return self.df.to_csv(filename+'_preprocessed.csv',index=False)
 
 
 
