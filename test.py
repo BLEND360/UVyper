@@ -14,7 +14,7 @@ pps.outlier_detection()  # comment for goodrx data
 pps.standardization()
 pps.print_shape()
 # pps.tocsv('maurices')
-pps.tocsv('segmentation_nonkroger_dataset_v31')
+pps.tocsv('segmentation_nonkroger_dataset_v3')
 
 # pip install ortools==9.3.10459
 from my_library.algorithms.k_means import k_means as km
