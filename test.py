@@ -1,7 +1,7 @@
 from my_library.utils import preprocessing as pp
 
 pps = pp.Preprocessing('maurices.csv')
-pps = pp.Preprocessing('segmentation_nonkroger_dataset_v3.csv')
+# pps = pp.Preprocessing('segmentation_nonkroger_dataset_v3.csv')
 # print(pps.show_variable_types(pps.vyper('indiv_id_mcvp')))
 a, B, nv, bv = pps.recoding(0.98, 0.1, 'indiv_id_mcvp', )
 # # a, B, nv, bv = pps.recoding(0.98, 0.1, 'person_id', )
