@@ -237,14 +237,31 @@ class Preprocessing:
         print("List of columns removed from the self.df : ", list1)
         return pd.DataFrame(self.df)
 
-    def outlier_detection(self):  # IQR method has been used instead of mahalanobis distance
-        q1 = self.df.quantile(0.25)
-        q3 = self.df.quantile(0.75)
-        iqr = q3 - q1
-        self.df = self.df[
-            ~((self.df < (q1 - 1.5 * iqr)) | (self.df > (q3 + 1.5 * iqr)))
-        ]
-        self.df = self.df.dropna().reset_index(drop=True)
+    # def outlier_detection(self):  # IQR method has been used instead of mahalanobis distance
+    #     q1 = self.df.quantile(0.25)
+    #     q3 = self.df.quantile(0.75)
+    #     iqr = q3 - q1
+    #     self.df = self.df[
+    #         ~((self.df < (q1 - 1.5 * iqr)) | (self.df > (q3 + 1.5 * iqr)))
+    #     ]
+    #     self.df = self.df.dropna().reset_index(drop=True)
+    #     return self.df
+
+    def outlier_capping(self, col, thold):
+
+        mu = self.df[col].mean()
+        sigma = self.df[col].std()
+        scaled_data = (self.df[col] - mu) / sigma
+        upper_limit = scaled_data.mean() + (thold * scaled_data.std())
+        lower_limit = scaled_data.mean() - (thold * scaled_data.std())
+        capped_data = np.where(scaled_data > upper_limit, upper_limit,
+                               np.where(scaled_data < lower_limit, lower_limit, scaled_data))
+        self.df[col] = capped_data * sigma + mu
+        return self.df
+
+    def oc(self, thold=3):
+        for col in self.df.columns:
+            self.outlier_capping(col, thold)
         return self.df
 
     def standardization(self):
