@@ -246,7 +246,7 @@ class Preprocessing:
     #     ]
     #     self.df = self.df.dropna().reset_index(drop=True)
     #     return self.df
-
+#
     def outlier_capping(self, col, thold):
 
         mu = self.df[col].mean()
