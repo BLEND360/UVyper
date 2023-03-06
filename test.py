@@ -9,7 +9,7 @@ bin_vars = [s + '_ind' for s in bv]
 pps.impute_na(num_vars, 'mean')
 pps.impute_na(bin_vars, 'mode')
 pps.correlation(num_vars, 0.8)
-pps.oc(6)  # comment for goodrx data
+pps.oc(6)   # comment for goodrx data
 pps.standardization()
 pps.print_shape()
 pps.tocsv('maurices_oc')
