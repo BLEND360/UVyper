@@ -21,8 +21,10 @@ from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
 from k_means_constrained import KMeansConstrained
 from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
 from kneed import KneeLocator
 from yellowbrick.cluster import KElbowVisualizer
+from matplotlib.cm import viridis
 
 
 class Kmeans:
@@ -31,37 +33,38 @@ class Kmeans:
         self.df = pd.read_csv(data)
 
     def elbow(self, minK, maxK, metric='distortion'):  # elbow plot for kmeans using distortion and inertia
+        X = self.df
         model = KMeans()
         visualizer = KElbowVisualizer(model, k=(minK, maxK), metric=metric, timings=False)
-        visualizer.fit(self.df)
+        visualizer.fit(X)
         visualizer.show()
         return visualizer.elbow_value_
 
-    # def Kmeans_elbow_plot(self, minK, maxK):  # elbow plot for kmeans using distortion and inertia
-    #     distortions = []
-    #     inertias = []
-    #     K = range(minK, maxK)
-    #     X = self.df
-    #
-    #     for k in K:
-    #         # Building and fitting the model
-    #         kmeanModel = KMeans(n_clusters=k).fit(X)
-    #         kmeanModel.fit(X)
-    #         distortions.append(sum(np.min(cdist(X, kmeanModel.cluster_centers_,
-    #                                             'euclidean'), axis=1)) / X.shape[0])
-    #         inertias.append(kmeanModel.inertia_)
-    #
-    #     plt.plot(K, distortions, 'bx-')
-    #     plt.xlabel('Values of K')
-    #     plt.ylabel('Distortion')
-    #     plt.title('The Elbow Method using Distortion')
-    #     plt.show()
-    #
-    #     plt.plot(K, inertias, 'bx-')
-    #     plt.xlabel('Values of K')
-    #     plt.ylabel('Inertia')
-    #     plt.title('The Elbow Method using Inertia')
-    #     plt.show()
+    def Kmeans_elbow_plot(self, minK, maxK):  # elbow plot for kmeans using distortion and inertia
+        distortions = []
+        inertias = []
+        K = range(minK, maxK)
+        X = self.df
+
+        for k in K:
+            # Building and fitting the model
+            kmeanModel = KMeans(n_clusters=k).fit(X)
+            kmeanModel.fit(X)
+            distortions.append(sum(np.min(cdist(X, kmeanModel.cluster_centers_,
+                                                'euclidean'), axis=1)) / X.shape[0])
+            inertias.append(kmeanModel.inertia_)
+
+        plt.plot(K, distortions, 'bx-')
+        plt.xlabel('Values of K')
+        plt.ylabel('Distortion')
+        plt.title('The Elbow Method using Distortion')
+        plt.show()
+
+        plt.plot(K, inertias, 'bx-')
+        plt.xlabel('Values of K')
+        plt.ylabel('Inertia')
+        plt.title('The Elbow Method using Inertia')
+        plt.show()
 
     @staticmethod
     def get_nature(x, y):
@@ -233,5 +236,7 @@ class Kmeans:
 
     @staticmethod
     def scatter_plot(principalComponents):
-        plt.scatter(principalComponents['PC1'], principalComponents['PC2'], c=principalComponents['cluster'])
+        plt.scatter(principalComponents['PC1'], principalComponents['PC2'], c=principalComponents['cluster'],
+                    cmap=viridis)
+        plt.colorbar()
         plt.show()
