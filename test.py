@@ -12,12 +12,14 @@ pps.standardization()
 pps.print_shape()
 pps.tocsv('maurices_oc')
 # pip install ortools==9.3.10459
+# pip install yellowbrick
+# pip install scikit-learn==0.24.1
 from my_library.algorithms.k_means import k_means as km
 
 kms = km.Kmeans('maurices_oc_preprocessed.csv')
-kms.Kmeans_elbow_plot(2, 10)
-kms.kmeans_minClusterSize(5, 10000)
-kms.kmeans_maxClusterSize(5, 10000)
-clus = kms.kmeans(5, 5000, 30000)
+k_n = kms.elbow(2, 10)
+kms.kmeans_minClusterSize(k_n, 10000)
+kms.kmeans_maxClusterSize(k_n, 10000)
+clus = kms.kmeans(k_n, 5000, 30000)
 pca = kms.pca(clus)
 kms.scatter_plot(pca)
