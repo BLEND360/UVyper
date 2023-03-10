@@ -33,6 +33,10 @@ class Preprocessing:
         print(self.df.shape)
         return self.df.shape
 
+    def df_list(self, list_of_columns):
+        self.df = self.df[list_of_columns]
+        return self.df
+
     def vyper(self, dv):  # model vyper
         m = Model(
             data=self.df,
@@ -58,8 +62,6 @@ class Preprocessing:
     def recoding(self, bounds, min_bin_size, dv,
                  ordinal_variables=None):  # removed excluded_variables,numeric_variables,binary_variables,category_variables as parameters and introduced dependent variable as parameter
 
-        if ordinal_variables is None:
-            ordinal_variables = []
         m = self.vyper(dv)
         original_variables = m.data.columns.to_list()
         excluded_variables = m.variables.get_excluded_variables()
@@ -67,6 +69,19 @@ class Preprocessing:
         numeric_variables = m.variables.get_numeric_variables()
         binary_variables = m.variables.get_binary_variables()
         keep_variables = original_variables
+        if ordinal_variables is None:
+            ordinal_variables = []
+        else:
+            ordinal_variables = ordinal_variables
+            for var in ordinal_variables:
+                if var in excluded_variables:
+                    excluded_variables.remove(var)
+                elif var in category_variables:
+                    category_variables.remove(var)
+                elif var in numeric_variables:
+                    numeric_variables.remove(var)
+                elif var in binary_variables:
+                    binary_variables.remove(var)
 
         for var in excluded_variables:
             if var in self.df.columns:
@@ -237,16 +252,25 @@ class Preprocessing:
         print("List of columns removed from the self.df : ", list1)
         return pd.DataFrame(self.df)
 
-    # def outlier_detection(self):  # IQR method has been used instead of mahalanobis distance
-    #     q1 = self.df.quantile(0.25)
-    #     q3 = self.df.quantile(0.75)
-    #     iqr = q3 - q1
-    #     self.df = self.df[
-    #         ~((self.df < (q1 - 1.5 * iqr)) | (self.df > (q3 + 1.5 * iqr)))
-    #     ]
-    #     self.df = self.df.dropna().reset_index(drop=True)
-    #     return self.df
-#
+    def calculateMahalanobis(self, cov=None, alpha=0.01):
+
+        y_mu = self.df - np.mean(self.df)
+        if not cov:
+            cov = np.cov(self.df.values.T)
+        inv_covmat = np.linalg.inv(cov)
+        left = np.dot(y_mu, inv_covmat)
+        mahal = np.dot(left, y_mu.T)
+        self.df['Mahalanobis'] = mahal.diagonal()
+        # calculate p values Degrees of Freedom is number of columns
+        self.df['p'] = 1 - chi2.cdf(self.df['Mahalanobis'], self.df.shape[1])
+        # remove rows with p < alpha
+        to_remove = len(self.df[self.df.p < alpha])
+        print("Number of rows removed from dataset: ", to_remove)
+        self.df = self.df[self.df.p > alpha]
+        self.df.drop('Mahalanobis', axis=1, inplace=True)
+        self.df.drop('p', axis=1, inplace=True)
+        return self.df
+
     def outlier_capping(self, col, thold):
 
         mu = self.df[col].mean()
@@ -270,14 +294,20 @@ class Preprocessing:
         self.df = pd.DataFrame(scaled, columns=self.df.columns)
         return self.df
 
-    # def var_clustering(self, maxeigval2=1, maxclus=None):
-    #     var_clust_model = VarClusHi(self.df, maxeigval2=maxeigval2, maxclus=maxclus)
-    #     var_clust_model.varclus()
-    #     var_to_keep = list(
-    #         var_clust_model.rsquare.sort_values(by=['Cluster', 'RS_Ratio']).groupby('Cluster').first().Variable)
-    #     return (var_clust_model.rsquare,
-    #             var_to_keep)
-    #             #from here need to get the variable within a cluster with the lowest RS_Ratio and pick that one
+    def var_clustering(self, maxeigval2=1, maxclus=None):
+        var_clust_model = VarClusHi(self.df, maxeigval2=maxeigval2, maxclus=maxclus)
+        var_clust_model.varclus()
+        var_to_keep = list(
+            var_clust_model.rsquare.sort_values(by=['Cluster', 'RS_Ratio']).groupby('Cluster').first().Variable)
+        return var_clust_model.rsquare, var_to_keep
+        # from here need to get the variable within a cluster with the lowest RS_Ratio and pick that one
+
+    def len_var_clustering(self, maxeigval2=1, maxclus=None):
+        var_clust_model = VarClusHi(self.df, maxeigval2=maxeigval2, maxclus=maxclus)
+        var_clust_model.varclus()
+        var_to_keep = list(
+            var_clust_model.rsquare.sort_values(by=['Cluster', 'RS_Ratio']).groupby('Cluster').first().Variable)
+        return len(var_to_keep)
 
     def tocsv(self,
               filename):
