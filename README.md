@@ -23,6 +23,8 @@ pip install scikit-learn==0.24.1
 
 #### <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library'>`my_library`</a> folder contains:
 
+- <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library/utils'>`utils`</a> folder contains <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library/utils/preprocessing.py'>`preprocessing.py`</a> file which contains the implementation of preprocessing
+  functions
 - <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library/algorithms'>`algorithms`</a> folder which
   contains all the
   clustering algorithms:
@@ -47,8 +49,6 @@ pip install scikit-learn==0.24.1
       contains <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library/algorithms/k_means/k_means.py'>`k_means.py`</a>
       file which contains
       the implementation of kmeans algorithm
-- <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library/utils'>`utils`</a> folder contains <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library/utils/preprocessing.py'>`preprocessing.py`</a> file which contains the implementation of preprocessing
-  functions
 - <a href = 'https://github.com/BLEND360/UVyper/tree/idc_dev1/my_library/notebooks'>`notebooks`</a> folder contains all
   the jupyter
   notebooks:
