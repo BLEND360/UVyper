@@ -54,8 +54,8 @@ pip install scikit-learn==0.24.1
   notebooks:
     - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/preprocessing.ipynb'>`preprocessing.ipynb`</a> works on sample data that was taken and performs preprocessing
     steps which were imported from`my_library.utils.preprocessing` file and converts preprocessed data into a ' filename ' + `_preprocessed`csv file
-    - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/k_means.ipynb'>`k_means.ipynb`</a> works on the preprocessed data and performs kmeans clustering.
-    - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/notebooks/hierarchical.ipynb'>`hierarchical.ipynb`</a> works on the preprocessed data and performs hierarchical clustering.
+    - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/kmeans.ipynb'>`k_means.ipynb`</a> works on the preprocessed data and performs kmeans clustering.
+    - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/hierarchical.ipynb'>`hierarchical.ipynb`</a> works on the preprocessed data and performs hierarchical clustering.
     - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/gmm.ipynb'>`gmm.ipynb`</a> works on the preprocessed data and performs gmm clustering.
     - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/birch.ipynb'>`birch.ipynb`</a> works on the preprocessed data and performs birch clustering.
     - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/dbscan.ipynb'>`dbscan.ipynb`</a> works on the preprocessed data and performs dbscan clustering.
