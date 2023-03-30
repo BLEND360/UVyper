@@ -25,6 +25,8 @@ from sklearn.metrics import silhouette_score, davies_bouldin_score
 from kneed import KneeLocator
 from yellowbrick.cluster import KElbowVisualizer
 from matplotlib.cm import viridis
+import pickle
+import os
 
 
 class Kmeans:
@@ -140,21 +142,56 @@ class Kmeans:
         plt.title('The Elbow Method using Inertia for Maximum Size Selection,Cluster_Num=' + str(cluster_num))
         plt.show()
 
-    # added the below three functions to the class
-    def kmeans(self, n_clusters, min_size, max_size):
+    def kmeans(self, n_clusters, min_size_per, max_size_per, rand_samp_prop=1.0):
         """
-        Method to perform k-means clustering.
-        :param n_clusters: int - The number of clusters to consider.
-        :param min_size: int - The minimum number of points in a cluster.
-        :param max_size: int - The maximum number of points in a cluster.
-        :return: list - The cluster labels.
+        Method to find the clusters using KMeans.
+        :param n_clusters: no of clusters
+        :param min_size_per: percentage of minimum size of cluster
+        :param max_size_per: percentage of maximum size of cluster
+        :param rand_samp_prop: random sampling proportion
+        :return: ndarray - The cluster labels.
         """
+        sample_data = self.df.sample(frac=rand_samp_prop, random_state=42)
         kmeanModel = KMeansConstrained(
             n_clusters=n_clusters,
-            size_min=min_size,
-            size_max=max_size,
-            random_state=42)
-        clusters = kmeanModel.fit_predict(self.df)
+            size_min=int((min_size_per / 100) * sample_data.shape[0]),
+            size_max=int((max_size_per / 100) * sample_data.shape[0]), )
+        kmeanModel.fit(sample_data)
+        with open('kmeanModel.pkl', 'wb') as file:
+            pickle.dump(kmeanModel, file)
+        with open('kmeanModel.pkl', 'rb') as file:
+            kmeanModel = pickle.load(file)
+        clusters = kmeanModel.predict(self.df)
+        # os.remove('kmeanModel.pkl')
+        # clusters = kmeanModel.fit_predict(self.df)
+        return clusters
+
+    def kmeans_model_create(self, n_clusters, min_size_per, max_size_per, rand_samp_prop=1.0):
+        """
+        Method to create the KMeans model as a pickle file.
+        :param n_clusters: no of clusters
+        :param min_size_per: percentage of minimum size of cluster
+        :param max_size_per: percentage of maximum size of cluster
+        :param rand_samp_prop: random sampling proportion
+        """
+        sample_data = self.df.sample(frac=rand_samp_prop, random_state=42)
+        kmeanModel = KMeansConstrained(
+            n_clusters=n_clusters,
+            size_min=int((min_size_per / 100) * sample_data.shape[0]),
+            size_max=int((max_size_per / 100) * sample_data.shape[0]), )
+        kmeanModel.fit(sample_data)
+        with open('kmeanModel.pkl', 'wb') as file:
+            pickle.dump(kmeanModel, file)
+
+    def kmeans_model_read(self, filename):
+        """
+        Method to read the KMeans model from a pickle file.
+        :param filename: str - The path of the pickle file.
+        :return: ndarray - The cluster labels.
+        """
+        with open(filename, 'rb') as file:
+            kmeanModel = pickle.load(file)
+        clusters = kmeanModel.predict(self.df)
         return clusters
 
     def pca(self, clusters, n_components=2):
@@ -208,12 +245,30 @@ class Kmeans:
         temp['cluster'] = clusters
         return temp.groupby(clusters).mean()
 
-    def get_cluster_sizes(self, clusters):
+    @staticmethod
+    def get_cluster_distribution(clusters):
         """
-        Method to calculate the cluster sizes.
+        Method to calculate the distribution of clusters.
+        :param clusters: ndarray - The cluster labels.
+        :return: dataframe - The distribution of clusters.
+        """
+        df = pd.DataFrame()
+        df['cluster'] = sorted(set(clusters))
+        df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
+        df['percentage'] = df['count'] / df['count'].sum() * 100
+        df = df.reset_index(drop=True)
+        return df
+
+    def get_scores(self, clusters):
+        """
+        Method to calculate the silhouette score and Davies-Bouldin score.
         :param clusters: list - The cluster labels.
-        :return: DataFrame - The cluster sizes.
+        :return: float - The silhouette score.
+        :return: float - The Davies-Bouldin score.
         """
-        temp = self.df.copy()
-        temp['cluster'] = clusters
-        return temp.groupby(clusters).size()
+        scores = pd.DataFrame()
+        sil = silhouette_score(self.df, clusters)
+        dav = davies_bouldin_score(self.df, clusters)
+        scores['silhouette_score'] = [sil]
+        scores['davies_bouldin_score'] = [dav]
+        return scores

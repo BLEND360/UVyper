@@ -22,6 +22,8 @@ from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import silhouette_score, davies_bouldin_score
 from sklearn.decomposition import PCA
 from matplotlib.cm import viridis
+import pickle
+import os
 
 
 class GMM:
@@ -92,7 +94,6 @@ class GMM:
         :param rand_sample_prop: float - proportion of data to sample
         :return: tuple - best score, the best parameters, and cross validation results
         """
-        # fd = self.create_folds(cv)
         sample_data = self.df.sample(frac=rand_sample_prop)
         gmm = GaussianMixture()
         random_search = RandomizedSearchCV(estimator=gmm, param_distributions=grid, cv=cv, scoring=self.silhouette,
@@ -100,16 +101,49 @@ class GMM:
         random_search.fit(sample_data)
         return random_search.best_score_, random_search.best_params_, random_search.cv_results_
 
-    def gmm(self, n_components, covariance_type, init_params):
+    def gmm(self, n_components, covariance_type, init_params, rand_sample_prop=1.0):
         """
         Method to perform GMM clustering.
         :param n_components: int - number of clusters
         :param covariance_type: str - covariance type
         :param init_params: str - initialization method
+        :param rand_sample_prop: float - proportion of data to sample
         :return: numpy array - cluster labels
         """
+        sample_data = self.df.sample(frac=rand_sample_prop, random_state=42)
         gmm = GaussianMixture(n_components=n_components, covariance_type=covariance_type, init_params=init_params)
-        clusters = gmm.fit_predict(self.df)
+        gmm.fit(sample_data)
+        with open('gmmModel.pkl', 'wb') as f:
+            pickle.dump(gmm, f)
+        with open('gmmModel.pkl', 'rb') as f:
+            gmm = pickle.load(f)
+        clusters = gmm.predict(self.df)
+        return clusters
+
+    def gmm_model_create(self, n_components, covariance_type, init_params, rand_sample_prop=1.0):
+        """
+        Method to create pickle file of gmm model.
+        :param n_components: int - number of clusters
+        :param covariance_type: str - covariance type
+        :param init_params: str - initialization method
+        :param rand_sample_prop: float - proportion of data to sample
+        :return: numpy array - cluster labels
+        """
+        sample_data = self.df.sample(frac=rand_sample_prop, random_state=42)
+        gmm = GaussianMixture(n_components=n_components, covariance_type=covariance_type, init_params=init_params)
+        gmm.fit(sample_data)
+        with open('gmmModel.pkl', 'wb') as f:
+            pickle.dump(gmm, f)
+
+    def gmm_model_read(self, filename):
+        """
+        Method to load the pickle file of gmm model.
+        :param filename: str - path to the pickle file
+        :return: ndarray - cluster labels
+        """
+        with open(filename, 'rb') as f:
+            gmm = pickle.load(f)
+        clusters = gmm.predict(self.df)
         return clusters
 
     def pca(self, clusters, n_components=2):
@@ -140,35 +174,53 @@ class GMM:
     def get_silhouette_score(self, clusters):
         """
         Method to calculate the silhouette score.
-        :param clusters: numpy array - cluster labels
-        :return: float - silhouette score
+        :param clusters: list - The cluster labels.
+        :return: float - The silhouette score.
         """
         return silhouette_score(self.df, clusters)
 
     def get_davies_bouldin_score(self, clusters):
         """
         Method to calculate the Davies-Bouldin score.
-        :param clusters: numpy array - cluster labels
-        :return: float - Davies-Bouldin score
+        :param clusters: list - The cluster labels.
+        :return: float - The Davies-Bouldin score.
         """
         return davies_bouldin_score(self.df, clusters)
 
     def get_cluster_centers(self, clusters):
         """
-        Method to get the cluster centers.
-        :param clusters: numpy array - cluster labels
-        :return: dataframe - cluster centers
+        Method to calculate the cluster centers.
+        :param clusters: list - The cluster labels.
+        :return: DataFrame - The cluster centers.
         """
         temp = self.df.copy()
         temp['cluster'] = clusters
         return temp.groupby(clusters).mean()
 
-    def get_cluster_sizes(self, clusters):
+    @staticmethod
+    def get_cluster_distribution(clusters):
         """
-        Method to get the cluster sizes.
-        :param clusters: numpy array - cluster labels
-        :return: dataframe - cluster sizes
+        Method to calculate the distribution of clusters.
+        :param clusters: ndarray - The cluster labels.
+        :return: dataframe - The distribution of clusters.
         """
-        temp = self.df.copy()
-        temp['cluster'] = clusters
-        return temp.groupby(clusters).size()
+        df = pd.DataFrame()
+        df['cluster'] = sorted(set(clusters))
+        df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
+        df['percentage'] = df['count'] / df['count'].sum() * 100
+        df = df.reset_index(drop=True)
+        return df
+
+    def get_scores(self, clusters):
+        """
+        Method to calculate the silhouette score and Davies-Bouldin score.
+        :param clusters: list - The cluster labels.
+        :return: float - The silhouette score.
+        :return: float - The Davies-Bouldin score.
+        """
+        scores = pd.DataFrame()
+        sil = silhouette_score(self.df, clusters)
+        dav = davies_bouldin_score(self.df, clusters)
+        scores['silhouette_score'] = [sil]
+        scores['davies_bouldin_score'] = [dav]
+        return scores

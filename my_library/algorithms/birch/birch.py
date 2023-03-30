@@ -22,6 +22,7 @@ from sklearn.model_selection import KFold, GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import fbeta_score, make_scorer, silhouette_score, davies_bouldin_score
 from sklearn.decomposition import PCA
 from matplotlib.cm import viridis
+import pickle, os
 
 
 class birch:
@@ -100,16 +101,50 @@ class birch:
         random_search.fit(sample_data)
         return random_search.best_score_, random_search.best_params_, random_search.cv_results_
 
-    def birch(self, branching_factor: int, n_clusters: int, threshold: float):
+    def birch(self, branching_factor: int, n_clusters: int, threshold: float, rand_sample_prop: float = 1.0):
         """
         Method to perform birch clustering
         :param branching_factor: int - branching factor
         :param n_clusters: int - number of clusters
         :param threshold: float - threshold
+        :param rand_sample_prop: float - proportion of data to sample, default is 1.0
         :return: ndarray - cluster labels
         """
+        sample_data = self.df.sample(frac=rand_sample_prop, random_state=42)
         birch = Birch(branching_factor=branching_factor, n_clusters=n_clusters, threshold=threshold)
-        clusters = birch.fit_predict(self.df)
+        birch.fit(sample_data)
+        with open('birchModel.pkl', 'wb') as f:
+            pickle.dump(birch, f)
+        with open('birchModel.pkl', 'rb') as f:
+            birch = pickle.load(f)
+        clusters = birch.predict(self.df)
+        return clusters
+
+    def birch_model_create(self, branching_factor: int, n_clusters: int, threshold: float,
+                           rand_sample_prop: float = 1.0):
+        """
+        Method to create a pickle file of the birch model
+        :param branching_factor: int - branching factor
+        :param n_clusters: int - number of clusters
+        :param threshold: float - threshold
+        :param rand_sample_prop: float - proportion of data to sample, default is 1.0
+        :return: ndarray - cluster labels
+        """
+        sample_data = self.df.sample(frac=rand_sample_prop, random_state=42)
+        birch = Birch(branching_factor=branching_factor, n_clusters=n_clusters, threshold=threshold)
+        birch.fit(sample_data)
+        with open('birchModel.pkl', 'wb') as f:
+            pickle.dump(birch, f)
+
+    def birch_model_read(self, filename):
+        """
+        Method to read the pickle file of the birch model
+        :param filename: str - path of the pickle file
+        :return: ndarray - cluster labels
+        """
+        with open(filename, 'rb') as f:
+            birch = pickle.load(f)
+        clusters = birch.predict(self.df)
         return clusters
 
     def pca(self, clusters, n_components: int = 2):
@@ -139,36 +174,54 @@ class birch:
 
     def get_silhouette_score(self, clusters):
         """
-        Method to get the silhouette score
-        :param clusters: ndarray - cluster labels
-        :return: float - silhouette score
+        Method to calculate the silhouette score.
+        :param clusters: list - The cluster labels.
+        :return: float - The silhouette score.
         """
         return silhouette_score(self.df, clusters)
 
     def get_davies_bouldin_score(self, clusters):
         """
-        Method to get the davies bouldin score
-        :param clusters: ndarray - cluster labels
-        :return: float - davies bouldin score
+        Method to calculate the Davies-Bouldin score.
+        :param clusters: list - The cluster labels.
+        :return: float - The Davies-Bouldin score.
         """
         return davies_bouldin_score(self.df, clusters)
 
     def get_cluster_centers(self, clusters):
         """
-        Method to get the cluster centers
-        :param clusters: ndarray - cluster labels
-        :return: dataframe - cluster centers
+        Method to calculate the cluster centers.
+        :param clusters: list - The cluster labels.
+        :return: DataFrame - The cluster centers.
         """
         temp = self.df.copy()
         temp['cluster'] = clusters
         return temp.groupby(clusters).mean()
 
-    def get_cluster_sizes(self, clusters):
+    @staticmethod
+    def get_cluster_distribution(clusters):
         """
-        Method to get the cluster sizes
-        :param clusters: ndarray - cluster labels
-        :return: dataframe - cluster sizes
+        Method to calculate the distribution of clusters.
+        :param clusters: ndarray - The cluster labels.
+        :return: dataframe - The distribution of clusters.
         """
-        temp = self.df.copy()
-        temp['cluster'] = clusters
-        return temp.groupby(clusters).size()
+        df = pd.DataFrame()
+        df['cluster'] = sorted(set(clusters))
+        df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
+        df['percentage'] = df['count'] / df['count'].sum() * 100
+        df = df.reset_index(drop=True)
+        return df
+
+    def get_scores(self, clusters):
+        """
+        Method to calculate the silhouette score and Davies-Bouldin score.
+        :param clusters: list - The cluster labels.
+        :return: float - The silhouette score.
+        :return: float - The Davies-Bouldin score.
+        """
+        scores = pd.DataFrame()
+        sil = silhouette_score(self.df, clusters)
+        dav = davies_bouldin_score(self.df, clusters)
+        scores['silhouette_score'] = [sil]
+        scores['davies_bouldin_score'] = [dav]
+        return scores
