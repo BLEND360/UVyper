@@ -29,10 +29,11 @@ import scipy.cluster.hierarchy as shc
 from sklearn.cluster import AgglomerativeClustering
 import numpy as np
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.neighbors import KNeighborsClassifier
 
 
 class Hierarchical:
-    def __init__(self, data: str):
+    def __init__(self, data):
         """
         Method to initialize the class and read the data
         :param data: str - path to the data
@@ -63,7 +64,7 @@ class Hierarchical:
         plt.show()
 
     @staticmethod
-    def silhouette(estimator, df, metric: str = 'euclidean'):
+    def silhouette(estimator, df, metric='euclidean'):
         """
         Method to calculate the silhouette score
         :param estimator: object - estimator
@@ -77,7 +78,7 @@ class Hierarchical:
         return score
 
     @staticmethod
-    def get_training_history(training_history: dict):
+    def get_training_history(training_history):
         """
         Method to get the training history
         :param training_history: dict - training history
@@ -85,7 +86,7 @@ class Hierarchical:
         """
         return pd.DataFrame.from_dict(training_history)
 
-    def gridSearchCV_hierarchical(self, grid: dict, cv: int = 5):
+    def gridSearchCV_hierarchical(self, grid, cv=5):
         """
         Method to perform grid search cross validation
         :param grid: dict - grid
@@ -98,7 +99,7 @@ class Hierarchical:
         training_history = grid_search.cv_results_
         return grid_search.best_score_, grid_search.best_params_, training_history
 
-    def randomizedSearchCV_hierarchical(self, grid: dict, cv: int = 5, n_iter: int = 10, rand_sample_prop: float = 0.2):
+    def randomizedSearchCV_hierarchical(self, grid, cv=5, n_iter=10, rand_sample_prop=0.2):
         """
         Method to perform randomized search cross validation
         :param grid: dict - grid
@@ -107,7 +108,6 @@ class Hierarchical:
         :param rand_sample_prop: float - random sample proportion
         :return: tuple - best score, best parameters, training history
         """
-        # fd = self.create_folds(cv)
         sample_data = self.df.sample(frac=rand_sample_prop)
         hierarchical = AgglomerativeClustering()
         random_search = RandomizedSearchCV(estimator=hierarchical, param_distributions=grid, cv=cv,
@@ -116,19 +116,35 @@ class Hierarchical:
         training_history = random_search.cv_results_
         return random_search.best_score_, random_search.best_params_, training_history
 
-    def hierarchical(self, n_clusters: int, linkage: str, affinity: str):
+    def hierarchical(self, n_clusters, linkage, affinity, random_sample_prop=1.0):
         """
         Method to perform hierarchical clustering
         :param n_clusters: int - number of clusters
         :param linkage: str - linkage
         :param affinity: str - affinity
+        :param random_sample_prop: float - random sample proportion
         :return: ndarray - clusters
         """
+        sample_data = self.df.sample(frac=random_sample_prop, random_state=42)
         hierarchical = AgglomerativeClustering(n_clusters=n_clusters, affinity=affinity, linkage=linkage)
-        clusters = hierarchical.fit_predict(self.df)
-        return clusters
+        clusters = hierarchical.fit_predict(sample_data)
+        return clusters, sample_data
 
-    def pca(self, clusters, n_components: int = 2):
+    def knn(self, sample_data, clusters, n_neighbors=5):
+        """
+        Method to perform knn
+        :param sample_data: dataframe - sample data used in hierarchical method
+        :param clusters: ndarray - clusters from hierarchical method
+        :param n_neighbors: int - number of neighbors
+        :return: ndarray - clusters labels for the entire dataset
+        """
+
+        knn = KNeighborsClassifier(n_neighbors=n_neighbors)
+        knn.fit(sample_data, clusters)
+        clu = knn.predict(self.df)
+        return clu
+
+    def pca(self, clusters, n_components=2):
         """
         Method to perform PCA
         :param clusters: ndarray - clusters
@@ -155,36 +171,54 @@ class Hierarchical:
 
     def get_silhouette_score(self, clusters):
         """
-        Method to get the silhouette score
-        :param clusters: ndarray - clusters
-        :return: float - silhouette score
+        Method to calculate the silhouette score.
+        :param clusters: list - The cluster labels.
+        :return: float - The silhouette score.
         """
         return silhouette_score(self.df, clusters)
 
     def get_davies_bouldin_score(self, clusters):
         """
-        Method to get the davies bouldin score
-        :param clusters: ndarray - clusters
-        :return: float - davies bouldin score
+        Method to calculate the Davies-Bouldin score.
+        :param clusters: list - The cluster labels.
+        :return: float - The Davies-Bouldin score.
         """
         return davies_bouldin_score(self.df, clusters)
 
     def get_cluster_centers(self, clusters):
         """
-        Method to get the cluster centers
-        :param clusters: ndarray - clusters
-        :return: dataframe - cluster centers
+        Method to calculate the cluster centers.
+        :param clusters: list - The cluster labels.
+        :return: DataFrame - The cluster centers.
         """
         temp = self.df.copy()
         temp['cluster'] = clusters
         return temp.groupby(clusters).mean()
 
-    def get_cluster_sizes(self, clusters):
+    @staticmethod
+    def get_cluster_distribution(clusters):
         """
-        Method to get the cluster sizes
-        :param clusters: ndarray - clusters
-        :return: dataframe - cluster sizes
+        Method to calculate the distribution of clusters.
+        :param clusters: ndarray - The cluster labels.
+        :return: dataframe - The distribution of clusters.
         """
-        temp = self.df.copy()
-        temp['cluster'] = clusters
-        return temp.groupby(clusters).size()
+        df = pd.DataFrame()
+        df['cluster'] = sorted(set(clusters))
+        df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
+        df['percentage'] = df['count'] / df['count'].sum() * 100
+        df = df.reset_index(drop=True)
+        return df
+
+    def get_scores(self, clusters):
+        """
+        Method to calculate the silhouette score and Davies-Bouldin score.
+        :param clusters: list - The cluster labels.
+        :return: float - The silhouette score.
+        :return: float - The Davies-Bouldin score.
+        """
+        scores = pd.DataFrame()
+        sil = silhouette_score(self.df, clusters)
+        dav = davies_bouldin_score(self.df, clusters)
+        scores['silhouette_score'] = [sil]
+        scores['davies_bouldin_score'] = [dav]
+        return scores
