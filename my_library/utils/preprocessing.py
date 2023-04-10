@@ -1,4 +1,3 @@
-# %%
 from vyper.user import Model
 import pandas as pd
 from sklearn.utils import shuffle
@@ -118,7 +117,7 @@ class Preprocessing:
             if var in self.df.columns:
                 keep_variables.remove(var)
                 self.df.drop(var, axis=1, inplace=True)
-
+        print("Excluded variables (vyper): ", excluded_variables)
         for var in numeric_variables:
             if var in self.df.columns:
                 Q3 = np.quantile(self.df[[var]], 0.75)
@@ -291,7 +290,7 @@ class Preprocessing:
                     if colname in self.df.columns:
                         list1.append(colname)
                         del self.df[colname]  # deleting the column from the self.df
-        print("List of columns removed from the self.df : ", list1)
+        print("List of columns removed due to high correlation: ", list1)
         return pd.DataFrame(self.df)
 
     @staticmethod
@@ -342,7 +341,7 @@ class Preprocessing:
                         del self.df[colname]
                         category_variables.remove(colname)
         # self.df=data_df_orig
-        print("List of columns removed from the dataset : ", list1)
+        print("List of columns removed due to higher than the threshold cramers v value: ", list1)
 
     def calculateMahalanobis(self, cov=None, alpha=0.01):
         """
