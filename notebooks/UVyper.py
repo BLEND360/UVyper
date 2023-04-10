@@ -835,3 +835,26 @@ class UVyper:
         ranked_score_table = sort_score_table(self.score_table)
         get_distribution_graph(self.distribution)
         print(ranked_score_table)
+
+
+# uv = UVyper.UVyper('cvs_hcb_member_profiling_preprocessed.csv')
+#
+# uv.kmeans_w(minK=3, maxK=10, metric='distortion', min_size_per=5, max_size_per=100, rand_sample_prop=0.2,
+#             filename='kmeanModel.pkl', dataset='cvs_hcb_member_profiling.csv')
+#
+# uv.hierarchical_w(param_grid={"linkage": ["ward", "complete", "average", "single"],
+#                               "n_clusters": list(range(3, 11)),
+#                               "affinity": ["euclidean", "l1", "l2", "manhattan", "cosine"]}, folds=5, n_iter=10,
+#                   rand_sample_prop=0.3, dataset='cvs_hcb_member_profiling.csv')
+#
+# uv.gmm_w(param_grid={'n_components': list(range(3, 11)),
+#                      'covariance_type': ['full', 'tied', 'diag', 'spherical'],
+#                      'init_params': ['kmeans',
+#                                      'random']}, folds=5, n_iter=10, rand_sample_prop=0.3, filename='gmmModel.pkl',
+#          dataset='cvs_hcb_member_profiling.csv')
+#
+# uv.birch_w(param_grid={"n_clusters": list(range(3, 11)), "branching_factor": [50, 100, 200, 300, 400, 500],
+#                        "threshold": [0.2, 0.3, 0.4, 0.5]}, folds=5, n_iter=10, rand_sample_prop=0.3,
+#            filename='birchModel.pkl', dataset='cvs_hcb_member_profiling.csv')
+#
+# uv.get_models_summary()
