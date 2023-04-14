@@ -1,3 +1,4 @@
+# In development
 from pandas import DataFrame
 from vyper.user import Model
 import pandas as pd
@@ -11,7 +12,7 @@ from vyper.utils.tools import StatisticalTools as st
 from sklearn.preprocessing import OrdinalEncoder
 import scipy as stats
 from scipy.stats import chi2
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from varclushi import VarClusHi
 import matplotlib.pyplot as plt
 
@@ -37,18 +38,18 @@ import plotly.express as px
 
 
 class UVyper:
-    def __init__(self, data: str):
+    def __init__(self, preprocessed_data: str):
         """
         Method to read and initialize the data.
-        :param data: str - path to the preprocessed data
+        :param preprocessed_data: str - path to the preprocessed data
         """
-        self.df = pd.read_csv(data)
+        self.df = pd.read_csv(preprocessed_data)
         self.score_table = pd.DataFrame()
         self.distribution = pd.DataFrame()
 
     def kmeans_w(self, minK: int, maxK: int, metric: str, min_size_per: float, max_size_per: float,
                  rand_sample_prop: float, filename: str, dataset: str,
-                 n_clusters: int = None):
+                 n_clusters: int = None, option: int = 0):
         """
         Method to find the clusters using KMeans.
         :param minK: int - The minimum number of clusters to consider.
@@ -62,6 +63,7 @@ class UVyper:
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
+        :param option: int - 1 - to save the model and 0 - not to save the model
         :return:  labels, summary table, scatter plots
         """
 
@@ -165,6 +167,20 @@ class UVyper:
                                                                                                        'Clustering')
             fig.show()
 
+        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
+            """
+            Method to plot the parallel coordinates plot.
+            :param n_components: int - The number of components to consider.
+            :param clusters: ndarray - The cluster labels.
+            :return: Parallel Coordinates Plot
+            """
+            principalComponents = pca(clusters=clusters, n_components=n_components)
+            cols = principalComponents.columns
+            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
+                                          color_continuous_scale=px.colors.diverging.Tealrose, title='K-Means '
+                                                                                                     'Clustering')
+            fig.show()
+
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
             Method to calculate the cluster centers.
@@ -186,7 +202,7 @@ class UVyper:
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
             df['percentage'] = df['count'] / df['count'].sum() * 100
-            df['Model'] = ['Kmeans' for i in range(len(set(clusters)))]
+            df['Model'] = ['Kmeans' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
 
@@ -209,17 +225,18 @@ class UVyper:
         print("Performing KMeans Clustering...")
         if n_clusters is None:
             n_clusters = elbow(minK, maxK, metric)
-        option = int(input("Do you want to save the model? (1/0)"))
+        # option = int(input("Do you want to save the model? (1/0): "))
         if option == 1:
             kmeans_model_create(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per,
                                 filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = kmeans_model_read(filename)
         else:
             clusters = kmeans(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per)
-        principalComponents_2d = pca(clusters, n_components=2)
-        principalComponents_3d = pca(clusters, n_components=3)
-        scatter_plot_2d(principalComponents_2d)
-        scatter_plot_3d(principalComponents_3d)
+        # principalComponents_2d = pca(clusters, n_components=2)
+        # principalComponents_3d = pca(clusters, n_components=3)
+        # scatter_plot_2d(principalComponents_2d)
+        # scatter_plot_3d(principalComponents_3d)
+        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -229,6 +246,7 @@ class UVyper:
         print(scores)
         print(cluster_centers)
         print("KMeans Clustering Complete!")
+        return clusters
 
     def hierarchical_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, dataset: str,
                        n_clusters: int = None, linkage: str = None,
@@ -339,6 +357,20 @@ class UVyper:
                                 title='Hierarchical Clustering')
             fig.show()
 
+        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
+            """
+            Method to plot the parallel coordinates plot.
+            :param n_components: int - The number of components to consider.
+            :param clusters: ndarray - The cluster labels.
+            :return: Parallel Coordinates Plot
+            """
+            principalComponents = pca(clusters=clusters, n_components=n_components)
+            cols = principalComponents.columns
+            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
+                                          color_continuous_scale=px.colors.diverging.Tealrose,
+                                          title='Hierarchical Clustering')
+            fig.show()
+
         # @staticmethod
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
@@ -361,7 +393,7 @@ class UVyper:
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
             df['percentage'] = df['count'] / df['count'].sum() * 100
-            df['Model'] = ['Hierarchical' for i in range(len(set(clusters)))]
+            df['Model'] = ['Hierarchical' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
 
@@ -398,10 +430,11 @@ class UVyper:
         clusters, sample_data = hierarchical(n_clusters=n_clusters, linkage=linkage, affinity=affinity,
                                              random_sample_prop=rand_sample_prop)
         clusters = knn(sample_data, clusters)
-        principalComponents_2d = pca(clusters, n_components=2)
-        principalComponents_3d = pca(clusters, n_components=3)
-        scatter_plot_2d(principalComponents_2d)
-        scatter_plot_3d(principalComponents_3d)
+        # principalComponents_2d = pca(clusters, n_components=2)
+        # principalComponents_3d = pca(clusters, n_components=3)
+        # scatter_plot_2d(principalComponents_2d)
+        # scatter_plot_3d(principalComponents_3d)
+        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -411,11 +444,12 @@ class UVyper:
         print(scores)
         print(cluster_centers)
         print("Hierarchical Clustering Complete!")
+        return clusters
 
     def gmm_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, filename: str, dataset: str,
               n_components: int = None,
               covariance_type: str = None,
-              init_params: str = None):
+              init_params: str = None, option: int = 0):
         """
         Method to perform Gaussian Mixture Model clustering.
         :param param_grid: dict - The parameters to be used for the randomized search cross validation.
@@ -427,6 +461,7 @@ class UVyper:
         :param n_components: int - number of components
         :param covariance_type: str - covariance type
         :param init_params: str - initialization parameters
+        :param option: int - 1 - to save the model and 0 - not to save the model
         :return: labels, summary table, scatter plots
         """
 
@@ -534,7 +569,19 @@ class UVyper:
                                 title='GMM')
             fig.show()
 
-        # @staticmethod
+        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
+            """
+            Method to plot the parallel coordinates plot.
+            :param n_components: int - The number of components to consider.
+            :param clusters: ndarray - The cluster labels.
+            :return: Parallel Coordinates Plot
+            """
+            principalComponents = pca(clusters=clusters, n_components=n_components)
+            cols = principalComponents.columns
+            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
+                                          color_continuous_scale=px.colors.diverging.Tealrose, title='GMM Clustering')
+            fig.show()
+
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
             Method to calculate the cluster centers.
@@ -556,7 +603,7 @@ class UVyper:
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
             df['percentage'] = df['count'] / df['count'].sum() * 100
-            df['Model'] = ['GMM' for i in range(len(set(clusters)))]
+            df['Model'] = ['GMM' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
 
@@ -589,17 +636,18 @@ class UVyper:
             if init_params is None:
                 init_params = b['init_params']
                 print("Recommended initialization method: ", init_params)
-        option = int(input("Do you want to save the model? (1/0): "))
+        # option = int(input("Do you want to save the model? (1/0): "))
         if option == 1:
             gmm_model_create(n_components=n_components, covariance_type=covariance_type, init_params=init_params,
                              filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = gmm_model_read(filename=filename)
         else:
             clusters = gmm(n_components=n_components, covariance_type=covariance_type, init_params=init_params)
-        principalComponents_2d = pca(clusters, n_components=2)
-        principalComponents_3d = pca(clusters, n_components=3)
-        scatter_plot_2d(principalComponents_2d)
-        scatter_plot_3d(principalComponents_3d)
+        # principalComponents_2d = pca(clusters, n_components=2)
+        # principalComponents_3d = pca(clusters, n_components=3)
+        # scatter_plot_2d(principalComponents_2d)
+        # scatter_plot_3d(principalComponents_3d)
+        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -609,11 +657,12 @@ class UVyper:
         print(scores)
         print(cluster_centers)
         print("GMM Clustering Complete!")
+        return clusters
 
     def birch_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, filename: str, dataset: str,
                 n_clusters: int = None,
                 branching_factor: int = None,
-                threshold: float = None):
+                threshold: float = None, option: int = 0):
         """
         Method to perform Birch clustering.
         :param param_grid: dict - The parameters to be used for the randomized search cross validation.
@@ -625,6 +674,7 @@ class UVyper:
         :param n_clusters: int - number of clusters
         :param branching_factor: int - branching factor
         :param threshold: int - threshold
+        :param option: int - 1 - to save the model and 0 - not to save the model
         :return: labels, summary table, scatter plots
         """
 
@@ -732,7 +782,19 @@ class UVyper:
                                 title='Birch Clustering')
             fig.show()
 
-        # @staticmethod
+        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
+            """
+            Method to plot the parallel coordinates plot.
+            :param n_components: int - The number of components to consider.
+            :param clusters: ndarray - The cluster labels.
+            :return: Parallel Coordinates Plot
+            """
+            principalComponents = pca(clusters=clusters, n_components=n_components)
+            cols = principalComponents.columns
+            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
+                                          color_continuous_scale=px.colors.diverging.Tealrose, title='Birch Clustering')
+            fig.show()
+
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
             Method to calculate the cluster centers.
@@ -754,7 +816,7 @@ class UVyper:
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
             df['percentage'] = df['count'] / df['count'].sum() * 100
-            df['Model'] = ['Birch' for i in range(len(set(clusters)))]
+            df['Model'] = ['Birch' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
 
@@ -787,17 +849,18 @@ class UVyper:
             if threshold is None:
                 threshold = b['threshold']
                 print("Recommended threshold: ", threshold)
-        option = int(input("Do you want to save the model? (1/0): "))
+
         if option == 1:
             birch_model_create(n_clusters=n_clusters, branching_factor=branching_factor, threshold=threshold,
                                filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = birch_model_read(filename=filename)
         else:
             clusters = birch(n_clusters=n_clusters, branching_factor=branching_factor, threshold=threshold)
-        principalComponents_2d = pca(clusters, n_components=2)
-        principalComponents_3d = pca(clusters, n_components=3)
-        scatter_plot_2d(principalComponents_2d)
-        scatter_plot_3d(principalComponents_3d)
+        # principalComponents_2d = pca(clusters, n_components=2)
+        # principalComponents_3d = pca(clusters, n_components=3)
+        # scatter_plot_2d(principalComponents_2d)
+        # scatter_plot_3d(principalComponents_3d)
+        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -807,10 +870,12 @@ class UVyper:
         print(scores)
         print(cluster_centers)
         print("Birch Clustering Complete!")
+        return clusters
 
     def get_models_summary(self):
         """
         Method to get the summary of the clustering
+        # :param dataset: str - path to the original dataset
         :return: dataframe - summary of the clustering
         """
 
@@ -835,26 +900,245 @@ class UVyper:
         ranked_score_table = sort_score_table(self.score_table)
         get_distribution_graph(self.distribution)
         print(ranked_score_table)
+        recommended_model = ranked_score_table.iloc[0]['Model']
+        print("Recommended Model: ", recommended_model)
+        return recommended_model
+
+    # @staticmethod
+    # def save_clustered_dataset(recommended_model: str, org_dataset: str,
+    #                            kmeans_cluster_labels: np.ndarray, hierarchical_cluster_labels: np.ndarray,
+    #                            gmm_cluster_labels: np.ndarray,
+    #                            birch_cluster_labels: np.ndarray):
+    #     """
+    #     Method to save the clustered labels with original dataset
+    #     :param recommended_model: str - name of the recommended model
+    #     :param org_dataset: str - path to the original dataset
+    #     :param kmeans_cluster_labels: np.ndarray - cluster labels of KMeans
+    #     :param hierarchical_cluster_labels: np.ndarray - cluster labels of Hierarchical
+    #     :param gmm_cluster_labels: np.ndarray - cluster labels of GMM
+    #     :param birch_cluster_labels: np.ndarray - cluster labels of Birch
+    #     :return:
+    #     """
+    #     temp = pd.read_csv(org_dataset)
+    #     if recommended_model == 'KMeans':
+    #         temp['cluster'] = kmeans_cluster_labels
+    #         temp.to_csv('KMeans_Clustered_' + dataset, index=False)
+    #     elif recommended_model == 'Hierarchical':
+    #         temp['cluster'] = hierarchical_cluster_labels
+    #         temp.to_csv('Hierarchical_Clustered_' + dataset, index=False)
+    #     elif recommended_model == 'GMM':
+    #         temp['cluster'] = gmm_cluster_labels
+    #         temp.to_csv('GMM_Clustered_' + dataset, index=False)
+    #     elif recommended_model == 'Birch':
+    #         temp['cluster'] = birch_cluster_labels
+    #         temp.to_csv('Birch_Clustered_' + dataset, index=False)
+    #
+    #     return temp
+
+    # @staticmethod
+    # def differential_factors(clustered_filename: str, n_variables: int = 5, n_columns: int = 2):
+    #     df = pd.read_csv(clustered_filename)
+    #
+    #     def impute_na(df, columns_list: list, method: str):  # mean, mode,  bfill, ffill
+    #         if method == "mean":
+    #             for i in columns_list:
+    #                 if i in df.columns:
+    #                     df[i].fillna(df[i].mean(), inplace=True)
+    #         if method == "mode":
+    #             for i in columns_list:
+    #                 if i in df.columns:
+    #                     df[i].fillna(df[i].mode()[0], inplace=True)
+    #
+    #         if method == "ffill" or method == "bfill":
+    #             for i in columns_list:
+    #                 if i in df.columns:
+    #                     df[i].fillna(method=method, inplace=True)
+    #
+    #     # def plot_charts(df, features: list, n_columns, bins):
+    #     #     fig, axs = plt.subplots(nrows=len(features) // n_columns + len(features) % n_columns, ncols=n_columns,
+    #     #                             figsize=(12, 6 * len(features) // n_columns + len(features) % n_columns))
+    #     #     for i, fea in enumerate(features):
+    #     #         row = i // n_columns
+    #     #         col = i % n_columns
+    #     #         axs[row, col].hist(df[fea], bins=bins)
+    #     #         axs[row, col].set_xlabel(fea)
+    #     #         axs[row, col].set_ylabel('Frequency')
+    #     #     plt.show()
+    #
+    #     impute_na(df, df.select_dtypes(include=['float64', 'int64']).columns, 'mean')
+    #     impute_na(df, df.select_dtypes(include=['object']).columns, 'mode')
+    #     grouped_by_cluster_centers = df.groupby('cluster').mean()
+    #     df2 = (grouped_by_cluster_centers / df.drop(['cluster'], axis=1).mean()) * 100
+    #     variance_df = df2.var().sort_values(ascending=False)
+    #     variance_df = variance_df.to_frame().reset_index()
+    #     variance_df = variance_df.rename(columns={'index': 'feature', 0: 'variance'})
+    #     if n_variables > len(variance_df):
+    #         n_variables = len(variance_df)
+    #     features = list(variance_df['feature'][:n_variables])
+    #     differential_factors_df = df[features]
+    #     differential_factors_df['cluster'] = df['cluster']
+    #     # plot_charts(df=differential_factors_df, features=features, n_columns=n_columns, bins=20)
+    #     return features
+
+    @staticmethod
+    def post_process(recommended_model: str, org_dataset: str, preprocessed_dataset: str,
+                     kmeans_cluster_labels: np.ndarray, hierarchical_cluster_labels: np.ndarray,
+                     gmm_cluster_labels: np.ndarray,
+                     birch_cluster_labels: np.ndarray, n_variables: int = 5):
+        """
+        Method to save the clustered labels with original dataset
+        :param recommended_model: str - name of the recommended model
+        :param org_dataset: str - path to the original dataset
+        :param preprocessed_dataset: str - path to the preprocessed dataset
+        :param kmeans_cluster_labels: np.ndarray - cluster labels of KMeans
+        :param hierarchical_cluster_labels: np.ndarray - cluster labels of Hierarchical
+        :param gmm_cluster_labels: np.ndarray - cluster labels of GMM
+        :param birch_cluster_labels: np.ndarray - cluster labels of Birch
+        :param n_variables: int - number of variables to be plotted
+        :return:
+        """
+
+        def save_clustered_dataset(recommended_model: str, org_dataset: str,
+                                   kmeans_cluster_labels: np.ndarray, hierarchical_cluster_labels: np.ndarray,
+                                   gmm_cluster_labels: np.ndarray,
+                                   birch_cluster_labels: np.ndarray):
+
+            temp = pd.read_csv(org_dataset)
+            if recommended_model == 'KMeans':
+                temp['cluster'] = kmeans_cluster_labels
+                # temp.to_csv('KMeans_Clustered_' + org_dataset, index=False)
+            elif recommended_model == 'Hierarchical':
+                temp['cluster'] = hierarchical_cluster_labels
+                # temp.to_csv('Hierarchical_Clustered_' + org_dataset, index=False)
+            elif recommended_model == 'GMM':
+                temp['cluster'] = gmm_cluster_labels
+                # temp.to_csv('GMM_Clustered_' + org_dataset, index=False)
+            elif recommended_model == 'Birch':
+                temp['cluster'] = birch_cluster_labels
+                # temp.to_csv('Birch_Clustered_' + org_dataset, index=False)
+
+            return temp
+
+        def impute_na(df, columns_list: list, method: str):  # mean, mode,  bfill, ffill
+            if method == "mean":
+                for i in columns_list:
+                    if i in df.columns:
+                        df[i].fillna(df[i].mean(), inplace=True)
+            if method == "mode":
+                for i in columns_list:
+                    if i in df.columns:
+                        df[i].fillna(df[i].mode()[0], inplace=True)
+
+            if method == "ffill" or method == "bfill":
+                for i in columns_list:
+                    if i in df.columns:
+                        df[i].fillna(method=method, inplace=True)
+
+        def parallel_plot(df: pd.DataFrame, features: list):
+            """
+            Method to plot parallel coordinates
+            :param df: pd.DataFrame - dataframe to be plotted
+            :param features: list - list of features to be plotted
+            :return:
+            """
+            fig = px.parallel_coordinates(df, color='cluster', dimensions=features,
+                                          color_continuous_scale=px.colors.diverging.Tealrose, )
+            fig.show()
+
+        def pca(preprocessed_data: pd.DataFrame, clusters: np.ndarray, n_components: int = 2):
+            """
+            Method to perform PCA.
+            :param preprocessed_data: dataframe - The dataset.
+            :param clusters: ndarray - The cluster labels.
+            :param n_components: int - The number of components to consider.
+            :return: dataframe - The PCA results.
+            """
+            pca = PCA(n_components=n_components)
+            principalComponents = pca.fit_transform(preprocessed_data)
+            principalDf = pd.DataFrame(data=principalComponents,
+                                       columns=['PC' + str(i) for i in range(1, n_components + 1)])
+            principalDf['cluster'] = clusters
+            return principalDf
+
+        def scatter_plot_2d(principalComponents: pd.DataFrame, recommended_model: str):
+            """
+            Method to plot the PCA results.
+            :param principalComponents: dataframe - The PCA results.
+            :param recommended_model: str - name of the recommended model
+            :return: Scatter Plot
+            """
+            plt.scatter(principalComponents['PC1'], principalComponents['PC2'], c=principalComponents['cluster'],
+                        cmap=viridis)
+            plt.title(recommended_model + ' clustering')
+            plt.colorbar()
+            plt.show()
+
+        def min_max_scaling(df: pd.DataFrame):
+            """
+            Method to perform min max scaling.
+            :param df: dataframe - The dataset.
+            :return: dataframe - The scaled dataset.
+            """
+            scaler = MinMaxScaler()
+            df = pd.DataFrame(scaler.fit_transform(df), columns=df.columns)
+            return df
+
+        clustered_dataset = save_clustered_dataset(recommended_model=recommended_model, org_dataset=org_dataset,
+                                                   kmeans_cluster_labels=kmeans_cluster_labels,
+                                                   hierarchical_cluster_labels=hierarchical_cluster_labels,
+                                                   gmm_cluster_labels=gmm_cluster_labels,
+                                                   birch_cluster_labels=birch_cluster_labels)
+        preprocessed_data = pd.read_csv(preprocessed_dataset)
+        principalComponents = pca(preprocessed_data, clustered_dataset['cluster'], n_components=2)
+        scatter_plot_2d(principalComponents, recommended_model)
+        # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['float64', 'int64']).columns, 'mean')
+        # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['object']).columns, 'mode')
+        df = clustered_dataset
+        grouped_by_cluster_centers = df.groupby('cluster').mean()
+        df2 = (grouped_by_cluster_centers / df.drop(['cluster'], axis=1).mean()) * 100
+        variance_df = df2.var().sort_values(ascending=False)
+        variance_df = variance_df.to_frame().reset_index()
+        variance_df = variance_df.rename(columns={'index': 'feature', 0: 'variance'})
+        if n_variables > len(variance_df):
+            n_variables = len(variance_df)
+        features = list(variance_df['feature'][:n_variables])
+        differential_factors_df = df[features]
+        differential_factors_df = min_max_scaling(differential_factors_df)
+        differential_factors_df['cluster'] = df['cluster']
+        parallel_plot(differential_factors_df, features)
 
 
-# uv = UVyper.UVyper('cvs_hcb_member_profiling_preprocessed.csv')
-#
-# uv.kmeans_w(minK=3, maxK=10, metric='distortion', min_size_per=5, max_size_per=100, rand_sample_prop=0.2,
-#             filename='kmeanModel.pkl', dataset='cvs_hcb_member_profiling.csv')
-#
-# uv.hierarchical_w(param_grid={"linkage": ["ward", "complete", "average", "single"],
-#                               "n_clusters": list(range(3, 11)),
-#                               "affinity": ["euclidean", "l1", "l2", "manhattan", "cosine"]}, folds=5, n_iter=10,
-#                   rand_sample_prop=0.3, dataset='cvs_hcb_member_profiling.csv')
-#
-# uv.gmm_w(param_grid={'n_components': list(range(3, 11)),
-#                      'covariance_type': ['full', 'tied', 'diag', 'spherical'],
-#                      'init_params': ['kmeans',
-#                                      'random']}, folds=5, n_iter=10, rand_sample_prop=0.3, filename='gmmModel.pkl',
-#          dataset='cvs_hcb_member_profiling.csv')
-#
-# uv.birch_w(param_grid={"n_clusters": list(range(3, 11)), "branching_factor": [50, 100, 200, 300, 400, 500],
-#                        "threshold": [0.2, 0.3, 0.4, 0.5]}, folds=5, n_iter=10, rand_sample_prop=0.3,
-#            filename='birchModel.pkl', dataset='cvs_hcb_member_profiling.csv')
-#
-# uv.get_models_summary()
+org_dataset = 'cvs_hcb_member_profiling.csv'
+preprocessed_dataset = 'cvs_hcb_member_profiling_preprocessed.csv'
+
+uv = UVyper(preprocessed_dataset)
+
+kmeans_cluster_labels = uv.kmeans_w(minK=2, maxK=10, metric='distortion', min_size_per=5, max_size_per=100,
+                                    rand_sample_prop=0.2,
+                                    filename='kmeanModel.pkl', dataset=org_dataset, n_clusters=4)
+
+hierarchical_cluster_labels = uv.hierarchical_w(param_grid={"linkage": ["ward", "complete", "average", "single"],
+                                                            "n_clusters": list(range(3, 11)),
+                                                            "affinity": ["euclidean", "l1", "l2", "manhattan",
+                                                                         "cosine"]}, folds=5, n_iter=10,
+                                                rand_sample_prop=0.3, dataset=org_dataset, linkage='average',
+                                                n_clusters=3, affinity='l1')
+
+gmm_cluster_labels = uv.gmm_w(param_grid={'n_components': list(range(3, 11)),
+                                          'covariance_type': ['full', 'tied', 'diag', 'spherical'],
+                                          'init_params': ['kmeans',
+                                                          'random']}, folds=5, n_iter=10, rand_sample_prop=0.3,
+                              filename='gmmModel.pkl',
+                              dataset=org_dataset, n_components=3, covariance_type='spherical',
+                              init_params='kmeans')
+
+birch_cluster_labels = uv.birch_w(
+    param_grid={"n_clusters": list(range(3, 11)), "branching_factor": [50, 100, 200, 300, 400, 500],
+                "threshold": [0.2, 0.3, 0.4, 0.5]}, folds=5, n_iter=10, rand_sample_prop=0.3,
+    filename='birchModel.pkl', dataset=org_dataset, n_clusters=3, threshold=0.5, branching_factor=300)
+
+rec_model = uv.get_models_summary()
+
+uv.post_process(recommended_model=rec_model, org_dataset=org_dataset, preprocessed_dataset=preprocessed_dataset,
+                kmeans_cluster_labels=kmeans_cluster_labels, hierarchical_cluster_labels=hierarchical_cluster_labels,
+                gmm_cluster_labels=gmm_cluster_labels, birch_cluster_labels=birch_cluster_labels, n_variables=4)
