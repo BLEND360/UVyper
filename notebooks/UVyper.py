@@ -1108,37 +1108,39 @@ class UVyper:
         parallel_plot(differential_factors_df, features)
 
 
-org_dataset = 'cvs_hcb_member_profiling.csv'
-preprocessed_dataset = 'cvs_hcb_member_profiling_preprocessed.csv'
-
-uv = UVyper(preprocessed_dataset)
-
-kmeans_cluster_labels = uv.kmeans_w(minK=2, maxK=10, metric='distortion', min_size_per=5, max_size_per=100,
-                                    rand_sample_prop=0.2,
-                                    filename='kmeanModel.pkl', dataset=org_dataset, n_clusters=4)
-
-hierarchical_cluster_labels = uv.hierarchical_w(param_grid={"linkage": ["ward", "complete", "average", "single"],
-                                                            "n_clusters": list(range(3, 11)),
-                                                            "affinity": ["euclidean", "l1", "l2", "manhattan",
-                                                                         "cosine"]}, folds=5, n_iter=10,
-                                                rand_sample_prop=0.3, dataset=org_dataset, linkage='average',
-                                                n_clusters=3, affinity='l1')
-
-gmm_cluster_labels = uv.gmm_w(param_grid={'n_components': list(range(3, 11)),
-                                          'covariance_type': ['full', 'tied', 'diag', 'spherical'],
-                                          'init_params': ['kmeans',
-                                                          'random']}, folds=5, n_iter=10, rand_sample_prop=0.3,
-                              filename='gmmModel.pkl',
-                              dataset=org_dataset, n_components=3, covariance_type='spherical',
-                              init_params='kmeans')
-
-birch_cluster_labels = uv.birch_w(
-    param_grid={"n_clusters": list(range(3, 11)), "branching_factor": [50, 100, 200, 300, 400, 500],
-                "threshold": [0.2, 0.3, 0.4, 0.5]}, folds=5, n_iter=10, rand_sample_prop=0.3,
-    filename='birchModel.pkl', dataset=org_dataset, n_clusters=3, threshold=0.5, branching_factor=300)
-
-rec_model = uv.get_models_summary()
-
-uv.post_process(recommended_model=rec_model, org_dataset=org_dataset, preprocessed_dataset=preprocessed_dataset,
-                kmeans_cluster_labels=kmeans_cluster_labels, hierarchical_cluster_labels=hierarchical_cluster_labels,
-                gmm_cluster_labels=gmm_cluster_labels, birch_cluster_labels=birch_cluster_labels, n_variables=4)
+# if __name__ == '__main__':
+#     org_dataset = 'cvs_hcb_member_profiling.csv'
+#     preprocessed_dataset = 'cvs_hcb_member_profiling_preprocessed.csv'
+#
+#     uv = UVyper(preprocessed_dataset)
+#
+#     kmeans_cluster_labels = uv.kmeans_w(minK=2, maxK=10, metric='distortion', min_size_per=5, max_size_per=100,
+#                                         rand_sample_prop=0.2,
+#                                         filename='kmeanModel.pkl', dataset=org_dataset, n_clusters=4)
+#
+#     hierarchical_cluster_labels = uv.hierarchical_w(param_grid={"linkage": ["ward", "complete", "average", "single"],
+#                                                                 "n_clusters": list(range(3, 11)),
+#                                                                 "affinity": ["euclidean", "l1", "l2", "manhattan",
+#                                                                              "cosine"]}, folds=5, n_iter=10,
+#                                                     rand_sample_prop=0.3, dataset=org_dataset, linkage='average',
+#                                                     n_clusters=3, affinity='l1')
+#
+#     gmm_cluster_labels = uv.gmm_w(param_grid={'n_components': list(range(3, 11)),
+#                                               'covariance_type': ['full', 'tied', 'diag', 'spherical'],
+#                                               'init_params': ['kmeans',
+#                                                               'random']}, folds=5, n_iter=10, rand_sample_prop=0.3,
+#                                   filename='gmmModel.pkl',
+#                                   dataset=org_dataset, n_components=3, covariance_type='spherical',
+#                                   init_params='kmeans')
+#
+#     birch_cluster_labels = uv.birch_w(
+#         param_grid={"n_clusters": list(range(3, 11)), "branching_factor": [50, 100, 200, 300, 400, 500],
+#                     "threshold": [0.2, 0.3, 0.4, 0.5]}, folds=5, n_iter=10, rand_sample_prop=0.3,
+#         filename='birchModel.pkl', dataset=org_dataset, n_clusters=3, threshold=0.5, branching_factor=300)
+#
+#     rec_model = uv.get_models_summary()
+#
+#     uv.post_process(recommended_model=rec_model, org_dataset=org_dataset, preprocessed_dataset=preprocessed_dataset,
+#                     kmeans_cluster_labels=kmeans_cluster_labels,
+#                     hierarchical_cluster_labels=hierarchical_cluster_labels,
+#                     gmm_cluster_labels=gmm_cluster_labels, birch_cluster_labels=birch_cluster_labels, n_variables=4)
