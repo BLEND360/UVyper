@@ -436,8 +436,8 @@ class Preprocessing:
 
 
 class UVyper:
-    def __init__(self, preprocessed_dataset: str, outlier_per: pd.DataFrame, cramers_matrix: pd.DataFrame,
-                 missing_values_table: pd.DataFrame):
+    def __init__(self, preprocessed_dataset: str, outlier_per: pd.DataFrame = None, cramers_matrix: pd.DataFrame = None,
+                 missing_values_table: pd.DataFrame = None):
         """
         Method to read and initialize the data.
         """
@@ -1524,7 +1524,7 @@ class UVyper:
             # Write data to worksheet
             ws.merge_cells('A1:' + get_column_letter(df.shape[1]) + '1')
             ws.cell(row=1, column=1).value = 'Distribution of Clusters'
-            ws.cell(row=1, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
             rows = dataframe_to_rows(df, index=False, header=True)
             for r_idx, row in enumerate(rows, 1):
@@ -1550,7 +1550,7 @@ class UVyper:
             ws.merge_cells(
                 'A' + str(1 + df.shape[0] + 2) + ':' + get_column_letter(df2.shape[1]) + str(1 + df.shape[0] + 2))
             ws.cell(row=1 + df.shape[0] + 2, column=1).value = 'Score of Clusters'
-            ws.cell(row=1 + df.shape[0] + 2, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1 + df.shape[0] + 2, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1 + df.shape[0] + 2, column=1).alignment = Alignment(horizontal='center', vertical='center')
             rows = dataframe_to_rows(df2, index=False, header=True)
             for r_idx, row in enumerate(rows, 1):
@@ -1598,27 +1598,32 @@ class UVyper:
             df = df.describe().T
             ws = workbook.create_sheet()
             ws.title = 'Describe'
+            ws.merge_cells(
+                'A1' + ':' + get_column_letter(df.shape[1] + 1) + '1')
+            ws.cell(row=1, column=1).value = 'Distribution of Clusters'
+            ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
+            ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
             for r in dataframe_to_rows(df, index=True, header=True):
                 ws.append(r)
-            ws.delete_rows(idx=2)
-            ws['A1'] = 'Feature'
+            ws.delete_rows(idx=3)
+            ws['A2'] = 'Feature'
             for i in range(1, df.shape[0] + 2):
-                ws.row_dimensions[i].height = 25
+                ws.row_dimensions[i + 1].height = 25
             for i in range(1, df.shape[1] + 2):
                 ws.column_dimensions[get_column_letter(i)].width = 25
             for i in range(1, len(df.columns) + 2):
-                ws.cell(row=1, column=i).font = Font(bold=True)
-                ws.cell(row=1, column=i).alignment = Alignment(horizontal='center', vertical='center')
-                ws.cell(row=1, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
-                ws.cell(row=1, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+                ws.cell(row=2, column=i).font = Font(bold=True)
+                ws.cell(row=2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
             for i in range(1, len(df.columns) + 2):
                 for j in range(1, len(df.index) + 2):
-                    ws.cell(row=j, column=i).alignment = Alignment(horizontal='center', vertical='center')
-                    ws.cell(row=j, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+                    ws.cell(row=j + 1, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                    ws.cell(row=j + 1, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
             ws.sheet_view.showGridLines = False
 
-        def pp(workbook, outlier_per: pd.DataFrame = None, missing_table: pd.DataFrame = None,
-               cramers_table: pd.DataFrame = None):
+        def analysis(workbook, outlier_per: pd.DataFrame = None, missing_table: pd.DataFrame = None,
+                     cramers_table: pd.DataFrame = None):
             df = missing_table
             ws = workbook.create_sheet()
             ws.title = 'Analysis'
@@ -1635,7 +1640,7 @@ class UVyper:
             # Write data to worksheet
             ws.merge_cells('A1:' + get_column_letter(df.shape[1]) + '1')
             ws.cell(row=1, column=1).value = 'Missing Value percentage'
-            ws.cell(row=1, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
             rows = dataframe_to_rows(df, index=False, header=True)
             for r_idx, row in enumerate(rows, 1):
@@ -1658,7 +1663,7 @@ class UVyper:
             ws.merge_cells(
                 'A' + str(1 + df.shape[0] + 2) + ':' + get_column_letter(df2.shape[1]) + str(1 + df.shape[0] + 2))
             ws.cell(row=1 + df.shape[0] + 2, column=1).value = 'Outlier Percentage'
-            ws.cell(row=1 + df.shape[0] + 2, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1 + df.shape[0] + 2, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1 + df.shape[0] + 2, column=1).alignment = Alignment(horizontal='center', vertical='center')
             rows = dataframe_to_rows(df2, index=False, header=True)
             for r_idx, row in enumerate(rows, 1):
@@ -1692,7 +1697,8 @@ class UVyper:
                     'A' + str(1 + df.shape[0] + df2.shape[0] + 4) + ':' + get_column_letter(df3.shape[1]) + str(
                         1 + df.shape[0] + df2.shape[0] + 4))
                 ws.cell(row=1 + df.shape[0] + df2.shape[0] + 4, column=1).value = 'Cramers Matrix'
-                ws.cell(row=1 + df.shape[0] + df2.shape[0] + 4, column=1).font = Font(bold=True, size=16)
+                ws.cell(row=1 + df.shape[0] + df2.shape[0] + 4, column=1).font = Font(bold=True, size=16,
+                                                                                      underline='single')
                 ws.cell(row=1 + df.shape[0] + df2.shape[0] + 4, column=1).alignment = Alignment(horizontal='center',
                                                                                                 vertical='center')
                 rows = dataframe_to_rows(df3, index=False, header=True)
@@ -1713,6 +1719,7 @@ class UVyper:
         distribution(workbook=wb, distribution_table=self.distribution, score_table=self.score_table)
         summary(workbook=wb, org_dataset=org_dataset, dependent_variable=dependent_variable)
         describe(workbook=wb, org_dataset=org_dataset)
-        pp(workbook=wb, outlier_per=self.outlier_per, missing_table=self.missing, cramers_table=self.cramers_matrix)
+        analysis(workbook=wb, outlier_per=self.outlier_per, missing_table=self.missing,
+                 cramers_table=self.cramers_matrix)
         wb.remove(wb['Sheet'])
         wb.save(filename)
