@@ -241,7 +241,6 @@ class Preprocessing:
         )
         missing_table["% Total Zero + Missing Values"] = (missing_table["Total Zero + Missing Values"] / len(
             self.df)) * 100
-        # missing_table["Data Type"] = str(self.df.dtypes)
         missing_table = (
             missing_table[missing_table.iloc[:, 1] != 0]
             .sort_values("% of Total Values", ascending=False)
@@ -409,7 +408,7 @@ class Preprocessing:
             upper_limit = mu + (thold * sigma)
             lower_limit = mu - (thold * sigma)
             outliers = self.df[(self.df[col] > upper_limit) | (self.df[col] < lower_limit)]
-            outlier_percentages[col] = len(outliers) / len(self.df) * 100
+            outlier_percentages[col] = round(len(outliers) / len(self.df) * 100, 2)
         outlier_percentages = pd.DataFrame(outlier_percentages.items(),
                                            columns=['column', 'outlier_percentage'])
         outlier_percentages = outlier_percentages[outlier_percentages['outlier_percentage'] != 0]
@@ -1668,8 +1667,6 @@ class UVyper:
             rows = dataframe_to_rows(df2, index=False, header=True)
             for r_idx, row in enumerate(rows, 1):
                 for c_idx, value in enumerate(row, 1):
-                    # if type(value) != str and type(value) != int:
-                    #     value = round(value, 2)
                     ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx, value=value)
                     ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx).alignment = Alignment(horizontal='center',
                                                                                                  vertical='center')
@@ -1714,6 +1711,7 @@ class UVyper:
                                                                                                               left=thin,
                                                                                                               right=thin,
                                                                                                               bottom=thin)
+            ws.sheet_view.showGridLines = False
 
         wb = openpyxl.Workbook()
         distribution(workbook=wb, distribution_table=self.distribution, score_table=self.score_table)
