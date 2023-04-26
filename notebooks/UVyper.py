@@ -1,26 +1,31 @@
 # In development
+import pandas as pd
 from pandas import DataFrame
 from vyper.user import Model
-import pandas as pd
-from sklearn.utils import shuffle
+from vyper.utils.tools import StatisticalTools as st
 from vyper.user.explorer import DataProfiler
 from openpyxl import Workbook
+import openpyxl
+from openpyxl.chart import BarChart, Reference, Series
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import PatternFill, Border, Side, Alignment, Font, colors
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.views import SheetView
 
 import math
 import numpy as np
+import pickle
+import matplotlib.pyplot as plt
+import plotly.express as px
 from vyper.utils.tools import StatisticalTools as st
 from sklearn.preprocessing import OrdinalEncoder
 import scipy as stats
-from scipy.stats import chi2
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from scipy.stats import chi2, chi2_contingency
 from varclushi import VarClusHi
-import matplotlib.pyplot as plt
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', 200)
-
-from sklearn.cluster import KMeans
 from scipy.spatial.distance import cdist
+from sklearn.preprocessing import LabelEncoder
 from k_means_constrained import KMeansConstrained
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score, davies_bouldin_score
@@ -28,24 +33,420 @@ from kneed import KneeLocator
 from yellowbrick.cluster import KElbowVisualizer
 from matplotlib.cm import viridis
 import scipy.cluster.hierarchy as shc
-from sklearn.cluster import AgglomerativeClustering, DBSCAN, Birch
+from sklearn.cluster import AgglomerativeClustering, DBSCAN, Birch, KMeans
 from sklearn.mixture import GaussianMixture
-import numpy as np
-import pickle
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.neighbors import KNeighborsClassifier
-import plotly.express as px
+from sklearn.ensemble import RandomForestClassifier
+
+thin = Side(border_style="thin", color="000000")
+thick = Side(border_style="thick", color="000000")
+
+
+class Preprocessing:
+    def __init__(self, data: str):
+        """
+        __init__ method for the Preprocessing class
+        :param data: string - path to the data
+        """
+        self.df = pd.read_csv(data)
+
+    def get_df(self):
+        """
+        returns the data
+        :return: dataframe
+        """
+        return self.df
+
+    def get_shape(self):
+        """
+        prints the shape of the data
+        :return: tuple
+        """
+        return self.df.shape
+
+    def vyper(self, dependent_variable: str):
+        """
+        Method to insert data into vyper
+        :param dependent_variable: string
+        :return: vyper model
+        """
+        m = Model(
+            data=self.df,
+            dependent_variable=dependent_variable,
+            na_drop_threshold=0.5,  # set here when variables should be dropped 1 = none dropped
+            training_percentage=0.7,  # set here % of dataset that should be training
+            model_type="linear",
+        )
+        return m
+
+    @staticmethod
+    def show_variable_types(m):
+        """
+        Method to show the variable types
+        :param m: vyper model
+        :return: returns the variable types
+        """
+        return m.variables.show_types()
+
+    @staticmethod
+    def quantile_function(a: list, bounds: float):
+        """
+        Method to calculate the quantile function
+        :param a: list - a list of variables for which the quantile function is to be calculated
+        :param bounds: float - a float representing the bounds around the median for which the quantile function is to be calculated
+        :return: list - returns the lower and upper bound
+        """
+        lower_bound = np.quantile(a, q=(0.5 - bounds / 2), interpolation="nearest")
+        upper_bound = np.quantile(a, q=(0.5 + bounds / 2), interpolation="nearest")
+        final_bounds = [lower_bound, upper_bound]
+
+        return final_bounds
+
+    def recoding(self, bounds: float, min_bin_size: float, dependent_variable: str,
+                 ordinal_variables: list = None):
+        """
+        Method to recode the data
+        :param bounds: float - this parameter is used to calculate the quantile function for numeric variables. It determines the range of the bin where the data will be recoded.
+        :param min_bin_size: float - this parameter is used to determine whether or not a binary variable should be split into two separate variables. If the proportion of the most frequent value in the binary variable is less than min_bin_size, the variable is left as is. Otherwise, two variables are created: one indicating the presence of the most frequent value, and another indicating the missing values.
+        :param dependent_variable: string - this parameter specifies the dependent variable of the dataset. This variable is used to train a vyper model to determine which variables should be recoded.
+        :param ordinal_variables: list - this parameter is used to specify which variables should be treated as ordinal variables. If a variable is specified as ordinal, it will be recoded using factorization. If it is not specified as ordinal, it will be treated as a numeric variable and recoded using the quantile function.
+        :return: dataframe, list, list, set, list
+        """
+        m = self.vyper(dependent_variable)
+        original_variables = m.data.columns.to_list()
+        excluded_variables = m.variables.get_excluded_variables()
+        category_variables = m.variables.get_categorical_variables()
+        numeric_variables = m.variables.get_numeric_variables()
+        binary_variables = m.variables.get_binary_variables()
+        keep_variables = original_variables
+        if ordinal_variables is None:
+            ordinal_variables = []
+        else:
+            ordinal_variables = ordinal_variables
+            for var in ordinal_variables:
+                if var in excluded_variables:
+                    excluded_variables.remove(var)
+                elif var in category_variables:
+                    category_variables.remove(var)
+                elif var in numeric_variables:
+                    numeric_variables.remove(var)
+                elif var in binary_variables:
+                    binary_variables.remove(var)
+
+        nv = list(numeric_variables)
+        bv = list(binary_variables)
+        ov = list(ordinal_variables)
+
+        for var in excluded_variables:
+            if var in self.df.columns:
+                keep_variables.remove(var)
+                self.df.drop(var, axis=1, inplace=True)
+        print("Excluded variables (vyper): ", excluded_variables)
+        for var in numeric_variables:
+            if var in self.df.columns:
+                Q3 = np.quantile(self.df[[var]], 0.75)
+                Q1 = np.quantile(self.df[[var]], 0.25)
+                IQR = Q3 - Q1
+
+                if IQR == 0:
+                    keep_variables.remove(var)
+                    nv.remove(var)
+                    self.df.drop(var, axis=1, inplace=True)
+                    print(
+                        "The following variables is excluded due to inter quantile equal 0:"
+                        + var
+                    )
+
+                else:
+                    bnds = self.quantile_function(
+                        [var for var in list(self.df[var]) if not math.isnan(var)],
+                        bounds=bounds,
+                    )
+                    self.df[var + "_processed"] = pd.Series(
+                        np.minimum(np.maximum(self.df[var], bnds[0]), bnds[1])
+                    )
+                    keep_variables.remove(var)
+                    nv.remove(var)
+                    keep_variables.append(var + "_processed")
+                    nv.append(var + "_processed")
+                    self.df = self.df[keep_variables]
+
+        for var in ordinal_variables:
+            if var in self.df.columns:
+                training_data = self.df[[var]].drop_duplicates()
+                training_data[var + "_processed"] = (
+                        pd.factorize(training_data[var], sort=True)[0] + 1
+                )
+                self.df = self.df.merge(training_data, on=var)
+                keep_variables.remove(var)
+                ov.remove(var)
+                keep_variables.append(var + "_processed")
+                ov.append(var + "_processed")
+                self.df = self.df[keep_variables]
+
+        N = self.df.shape[0]
+
+        for var in binary_variables:
+            if var in self.df.columns:
+                tab = self.df[var].value_counts(ascending=False)
+                counter2 = 0
+                counter1 = tab.iloc[1]
+                counter2 = counter1 + counter2
+                N_missing = sum(self.df[var].isna())
+
+                if N_missing / N >= min_bin_size:
+                    self.df[var + "_missing_ind"] = np.where(
+                        self.df[var].isna() == 1, 1, 0
+                    )
+
+                if counter2 / (N - N_missing) >= min_bin_size:
+                    self.df[var + "_ind"] = np.where(self.df[var] == tab.index[1], 1, 0)
+                self.df = self.df.drop([var], axis=1)
+                bv.remove(var)
+                bv.append(var + "_ind")
+
+        return self.df, nv, bv, category_variables, ov
+
+    def category_encoding(self, category_variables: list):
+        """
+        Method to encode the categorical variables
+        :param category_variables: list - a list of categorical variables in the DataFrame
+        """
+        if not category_variables:
+            print("No categorical variables found to encode")
+            return "No categorical variables found to encode"
+        temp = self.df[category_variables]
+        temp = pd.get_dummies(
+            temp, prefix=category_variables, columns=category_variables
+        )
+        self.df.drop(category_variables, axis=1, inplace=True)
+        self.df = pd.concat([self.df, temp], axis=1)
+
+    def missing_zero_values_table(self):
+        """
+        Method to generate a table that represents the number and percentage of missing and zero values for each column in the dataset. The table includes columns for the number of zero values, number of missing values, percentage of missing values, total number of zero and missing values, percentage of total zero and missing values, and data type.
+        :return: Pandas DataFrame containing the missing and zero values table.
+        """
+
+        zero_val = (self.df == 0.00).astype(int).sum(axis=0)
+        mis_val = self.df.isnull().sum()
+        mis_val_percent = (self.df.isnull().sum() / len(self.df)) * 100
+        missing_table = pd.concat([zero_val, mis_val, mis_val_percent], axis=1)
+        missing_table = missing_table.rename(
+            columns={0: "Zero Values", 1: "Missing Values", 2: "% of Total Values"}
+        )
+        missing_table["Total Zero + Missing Values"] = (
+                missing_table["Zero Values"] + missing_table["Missing Values"]
+        )
+        missing_table["% Total Zero + Missing Values"] = (missing_table["Total Zero + Missing Values"] / len(
+            self.df)) * 100
+        # missing_table["Data Type"] = str(self.df.dtypes)
+        missing_table = (
+            missing_table[missing_table.iloc[:, 1] != 0]
+            .sort_values("% of Total Values", ascending=False)
+            .round(1)
+        )
+        missing_table.reset_index(inplace=True)
+        missing_table.rename(columns={'index': 'feature'}, inplace=True)
+        missing_table['Data type'] = missing_table['feature'].apply(lambda feature: str(self.df[feature].dtype))
+        return missing_table
+
+    def drop_missing(self, threshold: float):
+        """
+        Method to drop the columns with missing values greater than the threshold
+        :param threshold: float - specifies the threshold value for the proportion of missing values in a column. Columns with missing values greater than this threshold will be dropped from the dataset.
+        """
+        drop_list = []
+        for cols in self.df.columns:
+            if (self.df.loc[:, cols].isnull().sum() / len(self.df)) > int(threshold):
+                drop_list.append(cols)
+        self.df.drop(drop_list, axis=1, inplace=True)
+
+    def impute_na(self, columns_list: list, method: str):  # mean, mode,  bfill, ffill
+        """
+        Method to impute the missing values
+        :param columns_list: list -  a list of columns to impute missing values
+        :param method: string -  a string specifying the imputation method, which can be one of the following:
+                                    "mean": imputes missing values with the mean value of the column
+                                    "mode": imputes missing values with the mode value of the column
+                                    "bfill": imputes missing values with the next valid value in the column (backward fill)
+                                    "ffill": imputes missing values with the previous valid value in the column (forward fill)
+        """
+        if method == "mean":
+            for i in columns_list:
+                if i in self.df.columns:
+                    self.df[i].fillna(self.df[i].mean(), inplace=True)
+        if method == "mode":
+            for i in columns_list:
+                if i in self.df.columns:
+                    self.df[i].fillna(self.df[i].mode()[0], inplace=True)
+
+        if method == "ffill" or method == "bfill":
+            for i in columns_list:
+                if i in self.df.columns:
+                    self.df[i].fillna(method=method, inplace=True)
+
+    def correlation(self, numerical_variables: list, ordinal_variables: list = None, threshold: float = 0.8):
+        """
+        Method to remove the highly correlated variables
+        :param numerical_variables: list - list of numerical variables to consider for correlation analysis.
+        :param ordinal_variables: list - list of ordinal variables to consider for correlation analysis.
+        :param threshold: float - threshold value for correlation. Variables with correlation greater than this threshold will be removed from the dataset.
+        :return: dataframe
+        """
+        if ordinal_variables is None:
+            ordinal_variables = []
+        df_copy = self.df.copy()
+        cols = self.df.columns
+        newcol = []
+        for col in numerical_variables + ordinal_variables:
+            if col in cols:
+                newcol.append(col)
+        df_copy = df_copy[newcol]
+        list1 = list()
+        col_corr = set()  # Set of all the names of deleted columns
+        corr_matrix = df_copy.corr()
+        for i in range(len(corr_matrix.columns)):
+            for j in range(i):
+                if (corr_matrix.iloc[i, j] >= threshold) and (
+                        corr_matrix.columns[j] not in col_corr
+                ):
+                    colname = corr_matrix.columns[i]  # getting the name of column
+                    col_corr.add(colname)
+                    if colname in self.df.columns:
+                        list1.append(colname)
+                        del self.df[colname]  # deleting the column from the self.df
+                    if colname in numerical_variables:
+                        numerical_variables.remove(colname)
+        print("List of columns removed due to high correlation: ", list1)
+        return pd.DataFrame(self.df)
+
+    def cramers_v_matrix(self, category_variables: list, threshold: float = 0.1):
+        """
+        Method to remove the variables with cramers v value greater than threshold
+        :param category_variables: list - list of categorical variables to consider for Cramer's V analysis.
+        :param threshold: float - threshold value for Cramer's V. Variables with Cramer's V greater than this threshold will be removed from the dataset.
+        :return: list
+        """
+
+        def cramers_V(variable_1: str, variable_2: str):
+            """
+              Method to calculate the Cramer's V statistic for categorical-categorical association.
+              :param variable_1: string - categorical variable
+              :param variable_2: string - categorical variable
+              :return: float
+              """
+            crosstab = np.array(
+                pd.crosstab(variable_1, variable_2, rownames=None, colnames=None))  # Cross table building
+            stat = chi2_contingency(crosstab)[0]  # Keeping of the test statistic of the Chi2 test
+            obs = np.sum(crosstab)  # Number of observations
+            mini = min(
+                crosstab.shape) - 1  # Take the minimum value between the columns and the rows of the cross table
+            return stat / (obs * mini)
+
+        if not category_variables:
+            print("No category variables found")
+            return "No category variables found"
+        data_df_orig = self.df[category_variables]
+        rows = []
+
+        for var1 in data_df_orig:
+            col = []
+            for var2 in data_df_orig:
+                cramers = cramers_V(data_df_orig[var1], data_df_orig[var2])  # Cramer's V test
+                col.append(round(cramers, 2))  # Keeping of the rounded value of the Cramer's V
+            rows.append(col)
+
+        cramers_results = np.array(rows)
+        df_matrix = pd.DataFrame(cramers_results, columns=data_df_orig.columns, index=data_df_orig.columns)
+
+        list1 = list()
+        col_cramers = set()  # Set of all the names of deleted columns
+
+        for i in range(len(df_matrix.columns)):
+            for j in range(i):
+                if (df_matrix.iloc[i, j] >= threshold) and (df_matrix.columns[j] not in col_cramers):
+                    colname = df_matrix.columns[i]  # getting the name of column
+                    col_cramers.add(colname)
+                    if colname in data_df_orig.columns:
+                        list1.append(colname)
+                        del data_df_orig[colname]  # deleting the column from the dataset
+                        del self.df[colname]
+                        category_variables.remove(colname)
+        # self.df=data_df_orig
+        print("List of columns removed due to higher than the threshold cramers v value: ", list1)
+        df_matrix.reset_index(inplace=True)
+        df_matrix.rename(columns={'index': 'variable'}, inplace=True)
+        return df_matrix
+
+    def outlier_capping(self, column_list: list, thold: float = 3):
+        """
+        Method to cap the outliers
+        :param column_list: list - list of columns to consider for outlier capping
+        :param thold: float - threshold value for outlier capping
+        :return: dataframe
+        """
+        for col in column_list:
+            mu = self.df[col].mean()
+            sigma = self.df[col].std()
+            upper_limit = mu + (thold * sigma)
+            lower_limit = mu - (thold * sigma)
+            self.df[col] = np.clip(self.df[col], lower_limit, upper_limit)
+        return self.df
+
+    def outlier_percentages(self, column_list: list, thold: float = 3):
+        """
+        Method to calculate the percentage of outliers
+        :param column_list:
+        :param thold:
+        :return:
+        """
+        outlier_percentages = {}
+        for col in column_list:
+            mu = self.df[col].mean()
+            sigma = self.df[col].std()
+            upper_limit = mu + (thold * sigma)
+            lower_limit = mu - (thold * sigma)
+            outliers = self.df[(self.df[col] > upper_limit) | (self.df[col] < lower_limit)]
+            outlier_percentages[col] = len(outliers) / len(self.df) * 100
+        outlier_percentages = pd.DataFrame(outlier_percentages.items(),
+                                           columns=['column', 'outlier_percentage'])
+        outlier_percentages = outlier_percentages[outlier_percentages['outlier_percentage'] != 0]
+        outlier_percentages.reset_index(drop=True, inplace=True)
+        return outlier_percentages
+
+    def standardization(self):
+        """
+        Method to standardize the data
+        :return: dataframe
+        """
+        scaler = StandardScaler()
+        scaled = scaler.fit_transform(self.df)
+        self.df = pd.DataFrame(scaled, columns=self.df.columns)
+        return self.df
+
+    def save_preprocessed_data(self, filename: str):
+        """
+        Method to save the data to a csv file
+        :param filename: str - path to the file
+        :return:
+        """
+        self.df.to_csv(filename)
 
 
 class UVyper:
-    def __init__(self, preprocessed_data: str):
+    def __init__(self, preprocessed_dataset: str, outlier_per: pd.DataFrame, cramers_matrix: pd.DataFrame,
+                 missing_values_table: pd.DataFrame):
         """
         Method to read and initialize the data.
-        :param preprocessed_data: str - path to the preprocessed data
         """
-        self.df = pd.read_csv(preprocessed_data)
+        self.df = pd.read_csv(preprocessed_dataset)
         self.score_table = pd.DataFrame()
         self.distribution = pd.DataFrame()
+        self.outlier_per = outlier_per
+        self.cramers_matrix = cramers_matrix
+        self.missing = missing_values_table
 
     def kmeans_w(self, minK: int, maxK: int, metric: str, min_size_per: float, max_size_per: float,
                  rand_sample_prop: float, filename: str, dataset: str,
@@ -201,7 +602,7 @@ class UVyper:
             df = pd.DataFrame()
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
-            df['percentage'] = df['count'] / df['count'].sum() * 100
+            df['percentage'] = round(df['count'] / df['count'].sum(), 2)
             df['Model'] = ['Kmeans' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
@@ -392,7 +793,7 @@ class UVyper:
             df = pd.DataFrame()
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
-            df['percentage'] = df['count'] / df['count'].sum() * 100
+            df['percentage'] = round(df['count'] / df['count'].sum(), 2)
             df['Model'] = ['Hierarchical' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
@@ -602,7 +1003,7 @@ class UVyper:
             df = pd.DataFrame()
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
-            df['percentage'] = df['count'] / df['count'].sum() * 100
+            df['percentage'] = round(df['count'] / df['count'].sum(), 2)
             df['Model'] = ['GMM' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
@@ -815,7 +1216,7 @@ class UVyper:
             df = pd.DataFrame()
             df['cluster'] = sorted(set(clusters))
             df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
-            df['percentage'] = df['count'] / df['count'].sum() * 100
+            df['percentage'] = round(df['count'] / df['count'].sum(), 2)
             df['Model'] = ['Birch' for _ in range(len(set(clusters)))]
             df = df.reset_index(drop=True)
             return df
@@ -875,8 +1276,8 @@ class UVyper:
     def get_models_summary(self):
         """
         Method to get the summary of the clustering
-        # :param dataset: str - path to the original dataset
-        :return: dataframe - summary of the clustering
+        prints the score table and the distribution plot
+        :return: str - recommended model
         """
 
         def sort_score_table(score_df: pd.DataFrame):
@@ -898,93 +1299,19 @@ class UVyper:
             plt.show()
 
         ranked_score_table = sort_score_table(self.score_table)
+        self.score_table = ranked_score_table
         get_distribution_graph(self.distribution)
         print(ranked_score_table)
         recommended_model = ranked_score_table.iloc[0]['Model']
         print("Recommended Model: ", recommended_model)
         return recommended_model
 
-    # @staticmethod
-    # def save_clustered_dataset(recommended_model: str, org_dataset: str,
-    #                            kmeans_cluster_labels: np.ndarray, hierarchical_cluster_labels: np.ndarray,
-    #                            gmm_cluster_labels: np.ndarray,
-    #                            birch_cluster_labels: np.ndarray):
-    #     """
-    #     Method to save the clustered labels with original dataset
-    #     :param recommended_model: str - name of the recommended model
-    #     :param org_dataset: str - path to the original dataset
-    #     :param kmeans_cluster_labels: np.ndarray - cluster labels of KMeans
-    #     :param hierarchical_cluster_labels: np.ndarray - cluster labels of Hierarchical
-    #     :param gmm_cluster_labels: np.ndarray - cluster labels of GMM
-    #     :param birch_cluster_labels: np.ndarray - cluster labels of Birch
-    #     :return:
-    #     """
-    #     temp = pd.read_csv(org_dataset)
-    #     if recommended_model == 'KMeans':
-    #         temp['cluster'] = kmeans_cluster_labels
-    #         temp.to_csv('KMeans_Clustered_' + dataset, index=False)
-    #     elif recommended_model == 'Hierarchical':
-    #         temp['cluster'] = hierarchical_cluster_labels
-    #         temp.to_csv('Hierarchical_Clustered_' + dataset, index=False)
-    #     elif recommended_model == 'GMM':
-    #         temp['cluster'] = gmm_cluster_labels
-    #         temp.to_csv('GMM_Clustered_' + dataset, index=False)
-    #     elif recommended_model == 'Birch':
-    #         temp['cluster'] = birch_cluster_labels
-    #         temp.to_csv('Birch_Clustered_' + dataset, index=False)
-    #
-    #     return temp
-
-    # @staticmethod
-    # def differential_factors(clustered_filename: str, n_variables: int = 5, n_columns: int = 2):
-    #     df = pd.read_csv(clustered_filename)
-    #
-    #     def impute_na(df, columns_list: list, method: str):  # mean, mode,  bfill, ffill
-    #         if method == "mean":
-    #             for i in columns_list:
-    #                 if i in df.columns:
-    #                     df[i].fillna(df[i].mean(), inplace=True)
-    #         if method == "mode":
-    #             for i in columns_list:
-    #                 if i in df.columns:
-    #                     df[i].fillna(df[i].mode()[0], inplace=True)
-    #
-    #         if method == "ffill" or method == "bfill":
-    #             for i in columns_list:
-    #                 if i in df.columns:
-    #                     df[i].fillna(method=method, inplace=True)
-    #
-    #     # def plot_charts(df, features: list, n_columns, bins):
-    #     #     fig, axs = plt.subplots(nrows=len(features) // n_columns + len(features) % n_columns, ncols=n_columns,
-    #     #                             figsize=(12, 6 * len(features) // n_columns + len(features) % n_columns))
-    #     #     for i, fea in enumerate(features):
-    #     #         row = i // n_columns
-    #     #         col = i % n_columns
-    #     #         axs[row, col].hist(df[fea], bins=bins)
-    #     #         axs[row, col].set_xlabel(fea)
-    #     #         axs[row, col].set_ylabel('Frequency')
-    #     #     plt.show()
-    #
-    #     impute_na(df, df.select_dtypes(include=['float64', 'int64']).columns, 'mean')
-    #     impute_na(df, df.select_dtypes(include=['object']).columns, 'mode')
-    #     grouped_by_cluster_centers = df.groupby('cluster').mean()
-    #     df2 = (grouped_by_cluster_centers / df.drop(['cluster'], axis=1).mean()) * 100
-    #     variance_df = df2.var().sort_values(ascending=False)
-    #     variance_df = variance_df.to_frame().reset_index()
-    #     variance_df = variance_df.rename(columns={'index': 'feature', 0: 'variance'})
-    #     if n_variables > len(variance_df):
-    #         n_variables = len(variance_df)
-    #     features = list(variance_df['feature'][:n_variables])
-    #     differential_factors_df = df[features]
-    #     differential_factors_df['cluster'] = df['cluster']
-    #     # plot_charts(df=differential_factors_df, features=features, n_columns=n_columns, bins=20)
-    #     return features
-
     @staticmethod
     def post_process(recommended_model: str, org_dataset: str, preprocessed_dataset: str,
-                     kmeans_cluster_labels: np.ndarray, hierarchical_cluster_labels: np.ndarray,
-                     gmm_cluster_labels: np.ndarray,
-                     birch_cluster_labels: np.ndarray, n_variables: int = 5):
+                     kmeans_cluster_labels: np.ndarray = None, hierarchical_cluster_labels: np.ndarray = None,
+                     gmm_cluster_labels: np.ndarray = None,
+                     birch_cluster_labels: np.ndarray = None, n_variables: int = 5, ):
+
         """
         Method to save the clustered labels with original dataset
         :param recommended_model: str - name of the recommended model
@@ -1083,6 +1410,29 @@ class UVyper:
             df = pd.DataFrame(scaler.fit_transform(df), columns=df.columns)
             return df
 
+        def randomforest(df, cluster_label):
+            cluster_df = pd.DataFrame()
+            cluster_df['cluster'] = df['cluster']
+            df.drop('cluster', axis=1, inplace=True)
+            cluster_df['Binary Cluster ' + str(cluster_label)] = cluster_df['cluster'].apply(
+                lambda x: 1 if x == cluster_label else 0)
+            print("Cluster " + str(cluster_label) + " classification counts:")
+            print("\n", cluster_df["Binary Cluster " + str(cluster_label)].value_counts())
+            # Train a classifier
+            clf = RandomForestClassifier(random_state=1)
+            clf.fit(df[df.columns].values, cluster_df["Binary Cluster " + str(cluster_label)].values)
+            # Index sort the most important features
+            sorted_feature_weight_idxes = np.argsort(clf.feature_importances_)[::-1]  # Reverse sort
+
+            # Get the most important features names and weights
+            most_important_features = np.take_along_axis(np.array(df.columns.tolist()), sorted_feature_weight_idxes,
+                                                         axis=0)
+            most_important_weights = np.take_along_axis(np.array(clf.feature_importances_), sorted_feature_weight_idxes,
+                                                        axis=0)
+            ranks = np.arange(1, len(most_important_weights) + 1)
+            df['cluster'] = cluster_df['cluster']
+            return most_important_features, ranks
+
         clustered_dataset = save_clustered_dataset(recommended_model=recommended_model, org_dataset=org_dataset,
                                                    kmeans_cluster_labels=kmeans_cluster_labels,
                                                    hierarchical_cluster_labels=hierarchical_cluster_labels,
@@ -1091,56 +1441,278 @@ class UVyper:
         preprocessed_data = pd.read_csv(preprocessed_dataset)
         principalComponents = pca(preprocessed_data, clustered_dataset['cluster'], n_components=2)
         scatter_plot_2d(principalComponents, recommended_model)
+        # #preprocessed
+        # df = preprocessed_data.copy()
+        # df = df[nv]
+        # df['cluster'] = clustered_dataset['cluster']
+        # cluster_labels = df['cluster'].unique()
+        # feature_score_table = pd.DataFrame(columns=['Feature', 'Rank'])
+        # for cluster_label in cluster_labels:
+        #     fea, ranks = rf(df, cluster_label)
+        #     feature_score_table = feature_score_table.append(pd.DataFrame({'Feature': fea, 'Rank': ranks}),
+        #                                                      ignore_index=True)
+        #
+        # feature_score_table = (feature_score_table.groupby(['Feature']).sum().sort_values(by='Rank', ascending=True)) / len(cluster_labels)
+        # feature_score_table.reset_index(inplace=True)
+        # if n_variables > len(feature_score_table):
+        #     n_variables = len(feature_score_table)
+        # features = list(feature_score_table['Feature'][:n_variables])
+        # differential_factors_df = preprocessed_data[features]
+        # differential_factors_df = min_max_scaling(differential_factors_df)
+        # differential_factors_df['cluster'] = clustered_dataset['cluster']
+        # parallel_plot(differential_factors_df, features)
+        # org_dataset
+        df = clustered_dataset.copy()
+        df = df.select_dtypes(include=['float64', 'int64'])
+        impute_na(df, df.select_dtypes(include=['float64', 'int64']).columns, 'mean')
+        cluster_labels = df['cluster'].unique()
+        feature_score_table = pd.DataFrame(columns=['Feature', 'Rank'])
+        for cluster_label in cluster_labels:
+            fea, ranks = randomforest(df, cluster_label)
+            feature_score_table = feature_score_table.append(pd.DataFrame({'Feature': fea, 'Rank': ranks}),
+                                                             ignore_index=True)
+        feature_score_table = (feature_score_table.groupby(['Feature']).sum().sort_values(by='Rank',
+                                                                                          ascending=True)) / len(
+            cluster_labels)
+        feature_score_table.reset_index(inplace=True)
+        if n_variables > len(feature_score_table):
+            n_variables = len(feature_score_table)
+        features = list(feature_score_table['Feature'][:n_variables])
+        print("Differential Factors: ")
+        for feature in features:
+            print(feature)
+        differential_factors_df = clustered_dataset[features]
+        differential_factors_df = min_max_scaling(differential_factors_df)
+        differential_factors_df['cluster'] = clustered_dataset['cluster']
+        parallel_plot(differential_factors_df, features)
         # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['float64', 'int64']).columns, 'mean')
         # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['object']).columns, 'mode')
-        df = clustered_dataset
-        grouped_by_cluster_centers = df.groupby('cluster').mean()
-        df2 = (grouped_by_cluster_centers / df.drop(['cluster'], axis=1).mean()) * 100
-        variance_df = df2.var().sort_values(ascending=False)
-        variance_df = variance_df.to_frame().reset_index()
-        variance_df = variance_df.rename(columns={'index': 'feature', 0: 'variance'})
-        if n_variables > len(variance_df):
-            n_variables = len(variance_df)
-        features = list(variance_df['feature'][:n_variables])
-        differential_factors_df = df[features]
-        differential_factors_df = min_max_scaling(differential_factors_df)
-        differential_factors_df['cluster'] = df['cluster']
-        parallel_plot(differential_factors_df, features)
+        # grouped_by_cluster_centers = clustered_dataset.groupby('cluster').mean()
+        # variance_df = ((grouped_by_cluster_centers / clustered_dataset.drop(['cluster'],
+        #                                                                     axis=1).mean()) * 100).var().sort_values(
+        #     ascending=False)
+        # variance_df = variance_df.to_frame().reset_index()
+        # variance_df = variance_df.rename(columns={'index': 'feature', 0: 'variance'})
+        # if n_variables > len(variance_df):
+        #     n_variables = len(variance_df)
+        # features = list(variance_df['feature'][:n_variables])
+        # differential_factors_df = clustered_dataset[features]
+        # differential_factors_df = min_max_scaling(differential_factors_df)
+        # differential_factors_df['cluster'] = clustered_dataset['cluster']
+        # parallel_plot(differential_factors_df, features)
 
+    def playbook(self, filename: str, org_dataset: str, dependent_variable: str, ):
+        def distribution(workbook, distribution_table: pd.DataFrame, score_table: pd.DataFrame):
+            df = distribution_table.pivot(index='Model', columns='cluster', values='percentage')
+            df.reset_index(inplace=True)
+            df.fillna(0, inplace=True)
 
-# if __name__ == '__main__':
-#     org_dataset = 'cvs_hcb_member_profiling.csv'
-#     preprocessed_dataset = 'cvs_hcb_member_profiling_preprocessed.csv'
-#
-#     uv = UVyper(preprocessed_dataset)
-#
-#     kmeans_cluster_labels = uv.kmeans_w(minK=2, maxK=10, metric='distortion', min_size_per=5, max_size_per=100,
-#                                         rand_sample_prop=0.2,
-#                                         filename='kmeanModel.pkl', dataset=org_dataset, n_clusters=4)
-#
-#     hierarchical_cluster_labels = uv.hierarchical_w(param_grid={"linkage": ["ward", "complete", "average", "single"],
-#                                                                 "n_clusters": list(range(3, 11)),
-#                                                                 "affinity": ["euclidean", "l1", "l2", "manhattan",
-#                                                                              "cosine"]}, folds=5, n_iter=10,
-#                                                     rand_sample_prop=0.3, dataset=org_dataset, linkage='average',
-#                                                     n_clusters=3, affinity='l1')
-#
-#     gmm_cluster_labels = uv.gmm_w(param_grid={'n_components': list(range(3, 11)),
-#                                               'covariance_type': ['full', 'tied', 'diag', 'spherical'],
-#                                               'init_params': ['kmeans',
-#                                                               'random']}, folds=5, n_iter=10, rand_sample_prop=0.3,
-#                                   filename='gmmModel.pkl',
-#                                   dataset=org_dataset, n_components=3, covariance_type='spherical',
-#                                   init_params='kmeans')
-#
-#     birch_cluster_labels = uv.birch_w(
-#         param_grid={"n_clusters": list(range(3, 11)), "branching_factor": [50, 100, 200, 300, 400, 500],
-#                     "threshold": [0.2, 0.3, 0.4, 0.5]}, folds=5, n_iter=10, rand_sample_prop=0.3,
-#         filename='birchModel.pkl', dataset=org_dataset, n_clusters=3, threshold=0.5, branching_factor=300)
-#
-#     rec_model = uv.get_models_summary()
-#
-#     uv.post_process(recommended_model=rec_model, org_dataset=org_dataset, preprocessed_dataset=preprocessed_dataset,
-#                     kmeans_cluster_labels=kmeans_cluster_labels,
-#                     hierarchical_cluster_labels=hierarchical_cluster_labels,
-#                     gmm_cluster_labels=gmm_cluster_labels, birch_cluster_labels=birch_cluster_labels, n_variables=4)
+            # Create new Excel workbook and worksheet
+            ws = workbook.create_sheet(0)
+            ws.title = 'Distribution'
+
+            for i in range(1, df.shape[0] + 3):
+                ws.row_dimensions[i].height = 25
+            for i in range(1, df.shape[1] + 1):
+                ws.column_dimensions[get_column_letter(i)].width = 25
+            for i in range(1, len(df.columns) + 1):
+                ws.cell(row=2, column=i).font = Font(bold=True)
+                ws.cell(row=2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            # Write data to worksheet
+            ws.merge_cells('A1:' + get_column_letter(df.shape[1]) + '1')
+            ws.cell(row=1, column=1).value = 'Distribution of Clusters'
+            ws.cell(row=1, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df, index=False, header=True)
+            for r_idx, row in enumerate(rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    # if type(value) != str and type(value) != int:
+                    #     # value = str(round(float(value), 2)) + '%'
+                    #     value = '{:.2%}'.format(value/100)
+                    ws.cell(row=r_idx + 1, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1, column=c_idx).alignment = Alignment(horizontal='center', vertical='center')
+                    ws.cell(row=r_idx + 1, column=c_idx).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            df2 = score_table
+            for i in range(2, df2.shape[0] + 4):
+                ws.row_dimensions[i + df.shape[0] + 1].height = 25
+            for i in range(1, df2.shape[1] + 1):
+                ws.column_dimensions[get_column_letter(i + df.shape[0] + 1)].width = 25
+            for i in range(1, len(df2.columns) + 1):
+                ws.cell(row=2 + df.shape[0] + 2, column=i).font = Font(bold=True)
+                ws.cell(row=2 + df.shape[0] + 2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2 + df.shape[0] + 2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2 + df.shape[0] + 2, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            ws.merge_cells(
+                'A' + str(1 + df.shape[0] + 2) + ':' + get_column_letter(df2.shape[1]) + str(1 + df.shape[0] + 2))
+            ws.cell(row=1 + df.shape[0] + 2, column=1).value = 'Score of Clusters'
+            ws.cell(row=1 + df.shape[0] + 2, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1 + df.shape[0] + 2, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df2, index=False, header=True)
+            for r_idx, row in enumerate(rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    if type(value) != str and type(value) != int:
+                        value = round(value, 2)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx).alignment = Alignment(horizontal='center',
+                                                                                                 vertical='center')
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx).border = Border(top=thin, left=thin,
+                                                                                           right=thin,
+                                                                                           bottom=thin)
+            # Create chart
+            chart = BarChart()
+            chart.type = 'col'
+            chart.style = 10
+            chart.title = 'Cluster Distribution'
+            chart.y_axis.title = '%'
+            chart.x_axis.title = 'Model'
+
+            # Set chart data
+            data = Reference(ws, min_col=2, min_row=2, max_col=df.shape[1], max_row=df.shape[0] + 2)
+            categories = Reference(ws, min_col=1, min_row=3, max_row=df.shape[0] + 2)
+            chart.add_data(data, titles_from_data=True)
+            chart.set_categories(categories)
+
+            # Add chart to worksheet
+            ws.add_chart(chart, 'G1')
+            ws.sheet_view.showGridLines = False
+
+        def summary(workbook, org_dataset: str, dependent_variable: str):
+            df = pd.read_csv(org_dataset)
+            if df[dependent_variable].dtype != 'int64' or df[dependent_variable].dtype != 'float64':
+                le = LabelEncoder()
+                df[dependent_variable] = le.fit_transform(df[dependent_variable])
+            m = Model(data=df, dependent_variable=dependent_variable, na_drop_threshold=0.5, training_percentage=0.7,
+                      model_type='linear')
+            variables_list = list(m.variables.get_active_variables())
+            variables_list = variables_list + [dependent_variable]
+            var_prof_df = DataProfiler(df[variables_list], dependent_variable=dependent_variable)
+            var_prof_df.create_var_profiling_ws(wb=workbook, sheet_name='Summary', sort_by_variance='desc')
+
+        def describe(workbook, org_dataset: str):
+            df = pd.read_csv(org_dataset)
+            df = df.describe().T
+            ws = workbook.create_sheet()
+            ws.title = 'Describe'
+            for r in dataframe_to_rows(df, index=True, header=True):
+                ws.append(r)
+            ws.delete_rows(idx=2)
+            ws['A1'] = 'Feature'
+            for i in range(1, df.shape[0] + 2):
+                ws.row_dimensions[i].height = 25
+            for i in range(1, df.shape[1] + 2):
+                ws.column_dimensions[get_column_letter(i)].width = 25
+            for i in range(1, len(df.columns) + 2):
+                ws.cell(row=1, column=i).font = Font(bold=True)
+                ws.cell(row=1, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=1, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=1, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+            for i in range(1, len(df.columns) + 2):
+                for j in range(1, len(df.index) + 2):
+                    ws.cell(row=j, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                    ws.cell(row=j, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+            ws.sheet_view.showGridLines = False
+
+        def pp(workbook, outlier_per: pd.DataFrame = None, missing_table: pd.DataFrame = None,
+               cramers_table: pd.DataFrame = None):
+            df = missing_table
+            ws = workbook.create_sheet()
+            ws.title = 'Analysis'
+            for i in range(1, df.shape[0] + 3):
+                ws.row_dimensions[i].height = 25
+            for i in range(1, df.shape[1] + 1):
+                ws.column_dimensions[get_column_letter(i)].width = 25
+            for i in range(1, len(df.columns) + 1):
+                ws.cell(row=2, column=i).font = Font(bold=True)
+                ws.cell(row=2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            # Write data to worksheet
+            ws.merge_cells('A1:' + get_column_letter(df.shape[1]) + '1')
+            ws.cell(row=1, column=1).value = 'Missing Value percentage'
+            ws.cell(row=1, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df, index=False, header=True)
+            for r_idx, row in enumerate(rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    ws.cell(row=r_idx + 1, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1, column=c_idx).alignment = Alignment(horizontal='center', vertical='center')
+                    ws.cell(row=r_idx + 1, column=c_idx).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            df2 = outlier_per
+            for i in range(2, df2.shape[0] + 4):
+                ws.row_dimensions[i + df.shape[0] + 1].height = 25
+            for i in range(1, df2.shape[1] + 1):
+                ws.column_dimensions[get_column_letter(i + df.shape[0] + 1)].width = 25
+            for i in range(1, len(df2.columns) + 1):
+                ws.cell(row=2 + df.shape[0] + 2, column=i).font = Font(bold=True)
+                ws.cell(row=2 + df.shape[0] + 2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2 + df.shape[0] + 2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2 + df.shape[0] + 2, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            ws.merge_cells(
+                'A' + str(1 + df.shape[0] + 2) + ':' + get_column_letter(df2.shape[1]) + str(1 + df.shape[0] + 2))
+            ws.cell(row=1 + df.shape[0] + 2, column=1).value = 'Outlier Percentage'
+            ws.cell(row=1 + df.shape[0] + 2, column=1).font = Font(bold=True, size=16)
+            ws.cell(row=1 + df.shape[0] + 2, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df2, index=False, header=True)
+            for r_idx, row in enumerate(rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    # if type(value) != str and type(value) != int:
+                    #     value = round(value, 2)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx).alignment = Alignment(horizontal='center',
+                                                                                                 vertical='center')
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 2, column=c_idx).border = Border(top=thin, left=thin,
+                                                                                           right=thin,
+                                                                                           bottom=thin)
+
+            df3 = cramers_table
+            if isinstance(df3, pd.DataFrame):
+                for i in range(1, df3.shape[0] + 4):
+                    ws.row_dimensions[i + df.shape[0] + df2.shape[0] + 4].height = 25
+                for i in range(1, df3.shape[1] + 1):
+                    ws.column_dimensions[get_column_letter(i + df2.shape[0] + 1)].width = 25
+                for i in range(1, len(df3.columns) + 1):
+                    ws.cell(row=2 + df.shape[0] + df2.shape[0] + 4, column=i).font = Font(bold=True)
+                    ws.cell(row=2 + df.shape[0] + df2.shape[0] + 4, column=i).alignment = Alignment(horizontal='center',
+                                                                                                    vertical='center')
+                    ws.cell(row=2 + df.shape[0] + df2.shape[0] + 4, column=i).fill = PatternFill("solid",
+                                                                                                 fgColor="A9C4FE")
+                    ws.cell(row=2 + df.shape[0] + df2.shape[0] + 4, column=i).border = Border(top=thin, left=thin,
+                                                                                              right=thin,
+                                                                                              bottom=thin)
+
+                ws.merge_cells(
+                    'A' + str(1 + df.shape[0] + df2.shape[0] + 4) + ':' + get_column_letter(df3.shape[1]) + str(
+                        1 + df.shape[0] + df2.shape[0] + 4))
+                ws.cell(row=1 + df.shape[0] + df2.shape[0] + 4, column=1).value = 'Cramers Matrix'
+                ws.cell(row=1 + df.shape[0] + df2.shape[0] + 4, column=1).font = Font(bold=True, size=16)
+                ws.cell(row=1 + df.shape[0] + df2.shape[0] + 4, column=1).alignment = Alignment(horizontal='center',
+                                                                                                vertical='center')
+                rows = dataframe_to_rows(df3, index=False, header=True)
+                for r_idx, row in enumerate(rows, 1):
+                    for c_idx, value in enumerate(row, 1):
+                        # if type(value) != str and type(value) != int:
+                        #     value = round(value, 2)
+                        ws.cell(row=r_idx + 1 + df.shape[0] + df2.shape[0] + 4, column=c_idx, value=value)
+                        ws.cell(row=r_idx + 1 + df.shape[0] + df2.shape[0] + 4, column=c_idx).alignment = Alignment(
+                            horizontal='center',
+                            vertical='center')
+                        ws.cell(row=r_idx + 1 + df.shape[0] + df2.shape[0] + 4, column=c_idx).border = Border(top=thin,
+                                                                                                              left=thin,
+                                                                                                              right=thin,
+                                                                                                              bottom=thin)
+
+        wb = openpyxl.Workbook()
+        distribution(workbook=wb, distribution_table=self.distribution, score_table=self.score_table)
+        summary(workbook=wb, org_dataset=org_dataset, dependent_variable=dependent_variable)
+        describe(workbook=wb, org_dataset=org_dataset)
+        pp(workbook=wb, outlier_per=self.outlier_per, missing_table=self.missing, cramers_table=self.cramers_matrix)
+        wb.remove(wb['Sheet'])
+        wb.save(filename)
