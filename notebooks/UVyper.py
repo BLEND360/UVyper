@@ -11,10 +11,13 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill, Border, Side, Alignment, Font, colors
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.views import SheetView
+from openpyxl.chart.marker import Marker
+from openpyxl.drawing.image import Image
 
 import math
 import numpy as np
 import pickle
+import os
 import matplotlib.pyplot as plt
 import plotly.express as px
 from vyper.utils.tools import StatisticalTools as st
@@ -1299,20 +1302,22 @@ class UVyper:
 
         ranked_score_table = sort_score_table(self.score_table)
         self.score_table = ranked_score_table
-        get_distribution_graph(self.distribution)
         print(ranked_score_table)
         recommended_model = ranked_score_table.iloc[0]['Model']
         print("Recommended Model: ", recommended_model)
         return recommended_model
 
     @staticmethod
-    def post_process(recommended_model: str, org_dataset: str, preprocessed_dataset: str,
-                     kmeans_cluster_labels: np.ndarray = None, hierarchical_cluster_labels: np.ndarray = None,
+    def post_process(recommended_model: str, org_dataset: str, preprocessed_dataset: str, dependent_variable: str,
+                     filename: str, kmeans_cluster_labels: np.ndarray = None,
+                     hierarchical_cluster_labels: np.ndarray = None,
                      gmm_cluster_labels: np.ndarray = None,
                      birch_cluster_labels: np.ndarray = None, n_variables: int = 5, ):
 
         """
         Method to save the clustered labels with original dataset
+        :param filename: str - filename to save the parallel coordinates plot (with .png extension)
+        :param dependent_variable:
         :param recommended_model: str - name of the recommended model
         :param org_dataset: str - path to the original dataset
         :param preprocessed_dataset: str - path to the preprocessed dataset
@@ -1360,9 +1365,10 @@ class UVyper:
                     if i in df.columns:
                         df[i].fillna(method=method, inplace=True)
 
-        def parallel_plot(df: pd.DataFrame, features: list):
+        def parallel_plot(df: pd.DataFrame, features: list, filename: str):
             """
             Method to plot parallel coordinates
+            :param filename: str - filename to save the plot
             :param df: pd.DataFrame - dataframe to be plotted
             :param features: list - list of features to be plotted
             :return:
@@ -1370,6 +1376,7 @@ class UVyper:
             fig = px.parallel_coordinates(df, color='cluster', dimensions=features,
                                           color_continuous_scale=px.colors.diverging.Tealrose, )
             fig.show()
+            # pio.write_image(fig, filename)
 
         def pca(preprocessed_data: pd.DataFrame, clusters: np.ndarray, n_components: int = 2):
             """
@@ -1439,6 +1446,7 @@ class UVyper:
                                                    birch_cluster_labels=birch_cluster_labels)
         preprocessed_data = pd.read_csv(preprocessed_dataset)
         principalComponents = pca(preprocessed_data, clustered_dataset['cluster'], n_components=2)
+        temp = principalComponents.drop('cluster', axis=1)
         scatter_plot_2d(principalComponents, recommended_model)
         # #preprocessed
         # df = preprocessed_data.copy()
@@ -1463,6 +1471,8 @@ class UVyper:
         # org_dataset
         df = clustered_dataset.copy()
         df = df.select_dtypes(include=['float64', 'int64'])
+        if dependent_variable in df.columns:
+            df.drop(dependent_variable, axis=1, inplace=True)
         impute_na(df, df.select_dtypes(include=['float64', 'int64']).columns, 'mean')
         cluster_labels = df['cluster'].unique()
         feature_score_table = pd.DataFrame(columns=['Feature', 'Rank'])
@@ -1483,7 +1493,7 @@ class UVyper:
         differential_factors_df = clustered_dataset[features]
         differential_factors_df = min_max_scaling(differential_factors_df)
         differential_factors_df['cluster'] = clustered_dataset['cluster']
-        parallel_plot(differential_factors_df, features)
+        parallel_plot(differential_factors_df, features, filename=filename)
         # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['float64', 'int64']).columns, 'mean')
         # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['object']).columns, 'mode')
         # grouped_by_cluster_centers = clustered_dataset.groupby('cluster').mean()
@@ -1499,8 +1509,28 @@ class UVyper:
         # differential_factors_df = min_max_scaling(differential_factors_df)
         # differential_factors_df['cluster'] = clustered_dataset['cluster']
         # parallel_plot(differential_factors_df, features)
+        return temp
 
-    def playbook(self, filename: str, org_dataset: str, dependent_variable: str, ):
+    def playbook(self, filename: str, org_dataset: str, im: str, dependent_variable: str, pca: pd.DataFrame,
+                 to_delete: bool = 0,
+                 kmeans_cluster_labels: str = None,
+                 hierarchical_cluster_labels: str = None, gmm_cluster_labels: str = None,
+                 birch_cluster_labels: str = None, ):
+        """
+        Method to generate playbook
+        :param im:
+        :param filename: str - filename to save the playbook
+        :param org_dataset: str - path to the original dataset
+        :param dependent_variable: str - dependent variable
+        :param pca: pd.DataFrame - pca dataframe of preprocess dataset
+        :param to_delete: int - to delete the parallel plot png file after generating playbook
+        :param kmeans_cluster_labels: np.ndarray - kmeans cluster labels
+        :param hierarchical_cluster_labels: np.ndarray - hierarchical cluster labels
+        :param gmm_cluster_labels: np.ndarray - gmm cluster labels
+        :param birch_cluster_labels: np.ndarray - birch cluster labels
+        :return:
+        """
+
         def distribution(workbook, distribution_table: pd.DataFrame, score_table: pd.DataFrame):
             df = distribution_table.pivot(index='Model', columns='cluster', values='percentage')
             df.reset_index(inplace=True)
@@ -1598,7 +1628,7 @@ class UVyper:
             ws = workbook.create_sheet()
             ws.title = 'Describe'
             ws.merge_cells(
-                'A1' + ':' + get_column_letter(df.shape[1] + 1) + '1')
+                'A1:' + get_column_letter(df.shape[1] + 1) + '1')
             ws.cell(row=1, column=1).value = 'Distribution of Clusters'
             ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
@@ -1689,7 +1719,6 @@ class UVyper:
                     ws.cell(row=2 + df.shape[0] + df2.shape[0] + 4, column=i).border = Border(top=thin, left=thin,
                                                                                               right=thin,
                                                                                               bottom=thin)
-
                 ws.merge_cells(
                     'A' + str(1 + df.shape[0] + df2.shape[0] + 4) + ':' + get_column_letter(df3.shape[1]) + str(
                         1 + df.shape[0] + df2.shape[0] + 4))
@@ -1713,11 +1742,58 @@ class UVyper:
                                                                                                               bottom=thin)
             ws.sheet_view.showGridLines = False
 
+        def charts(workbook, pca: pd.DataFrame, im: str, kl: np.ndarray = None, hl: np.ndarray = None,
+                   gl: np.ndarray = None, bl: np.ndarray = None):
+            ws = workbook.create_sheet(0)
+            ws.title = 'Charts'
+
+            plots = []
+            if kl is not None:
+                plots.append((kl, 'KMeans'))
+            if hl is not None:
+                plots.append((hl, 'Hierarchical'))
+            if gl is not None:
+                plots.append((gl, 'GMM'))
+            if bl is not None:
+                plots.append((bl, 'Birch'))
+
+            remove = []
+            endrow = 0
+            for i, (labels, title) in enumerate(plots):
+                fig = plt.figure()
+                plt.scatter(pca['PC1'], pca['PC2'], c=labels, cmap=viridis)
+                plt.title(title)
+                plt.xlabel('PC1')
+                plt.ylabel('PC2')
+                plt.colorbar()
+                plot_filename = f'{title}_plot.png'
+                fig.savefig(plot_filename)
+                remove.append(plot_filename)
+                img = Image(plot_filename)
+                img.width = 600
+                img.height = 400
+                row = (i // 2) * 20 + 1
+                col = (i % 2) * 10 + 3
+                ws.add_image(img, f'{chr(col + 64)}{row}')
+                ws.sheet_view.showGridLines = False
+                endrow = row
+            im1 = Image(im)
+            im1.width = 1250
+            im1.height = 600
+            ws.add_image(im1, f'{chr(67)}{endrow * 2}')
+            return remove
+
         wb = openpyxl.Workbook()
         distribution(workbook=wb, distribution_table=self.distribution, score_table=self.score_table)
         summary(workbook=wb, org_dataset=org_dataset, dependent_variable=dependent_variable)
         describe(workbook=wb, org_dataset=org_dataset)
         analysis(workbook=wb, outlier_per=self.outlier_per, missing_table=self.missing,
                  cramers_table=self.cramers_matrix)
+        remove = charts(workbook=wb, pca=pca, kl=kmeans_cluster_labels, hl=hierarchical_cluster_labels,
+                        gl=gmm_cluster_labels, bl=birch_cluster_labels, im=im)
         wb.remove(wb['Sheet'])
         wb.save(filename)
+        if to_delete:
+            remove.append(filename)
+        for i in remove:
+            os.remove(i)
