@@ -1,4 +1,3 @@
-# In development
 import pandas as pd
 from pandas import DataFrame
 from vyper.user import Model
@@ -330,7 +329,7 @@ class Preprocessing:
         Method to remove the variables with cramers v value greater than threshold
         :param category_variables: list - list of categorical variables to consider for Cramer's V analysis.
         :param threshold: float - threshold value for Cramer's V. Variables with Cramer's V greater than this threshold will be removed from the dataset.
-        :return: list
+        :return: dataframe - cramers v matrix
         """
 
         def cramers_V(variable_1: str, variable_2: str):
@@ -388,7 +387,7 @@ class Preprocessing:
         Method to cap the outliers
         :param column_list: list - list of columns to consider for outlier capping
         :param thold: float - threshold value for outlier capping
-        :return: dataframe
+        :return: pd.DataFrame - dataframe with capped outliers
         """
         for col in column_list:
             mu = self.df[col].mean()
@@ -401,9 +400,9 @@ class Preprocessing:
     def outlier_percentages(self, column_list: list, thold: float = 3):
         """
         Method to calculate the percentage of outliers
-        :param column_list:
-        :param thold:
-        :return:
+        :param column_list: list - list of columns to consider for outlier capping
+        :param thold: float - threshold value for outlier capping
+        :return: pd.DataFrame - dataframe with outlier percentages
         """
         outlier_percentages = {}
         for col in column_list:
@@ -422,7 +421,7 @@ class Preprocessing:
     def standardization(self):
         """
         Method to standardize the data
-        :return: dataframe
+        :return: pd.DataFrame - standardized dataframe
         """
         scaler = StandardScaler()
         scaled = scaler.fit_transform(self.df)
@@ -443,6 +442,10 @@ class UVyper:
                  missing_values_table: pd.DataFrame = None):
         """
         Method to read and initialize the data.
+        :param preprocessed_dataset: str - path to the preprocessed dataset
+        :param outlier_per: pd.DataFrame - dataframe with outlier percentages (optional)
+        :param cramers_matrix: pd.DataFrame - dataframe with cramers matrix (optional)
+        :param missing_values_table: pd.DataFrame - dataframe with missing values table (optional)
         """
         self.df = pd.read_csv(preprocessed_dataset)
         self.score_table = pd.DataFrame()
@@ -468,7 +471,7 @@ class UVyper:
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
         :param option: int - 1 - to save the model and 0 - not to save the model
-        :return:  labels, summary table, scatter plots
+        :return: ndarray - cluster labels
         """
 
         def elbow(minK: int, maxK: int, metric: str = 'distortion'):
@@ -535,56 +538,6 @@ class UVyper:
             clusters = kmeanModel.predict(self.df)
             return clusters
 
-        def pca(clusters: np.ndarray, n_components: int = 2):
-            """
-            Method to perform PCA.
-            :param clusters: ndarray - The cluster labels.
-            :param n_components: int - The number of components to consider.
-            :return: dataframe - The PCA results.
-            """
-            pca = PCA(n_components=n_components)
-            principalComponents = pca.fit_transform(self.df)
-            principalDf = pd.DataFrame(data=principalComponents,
-                                       columns=['PC' + str(i) for i in range(1, n_components + 1)])
-            principalDf['cluster'] = clusters
-            return principalDf
-
-        def scatter_plot_2d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            plt.scatter(principalComponents['PC1'], principalComponents['PC2'], c=principalComponents['cluster'],
-                        cmap=viridis)
-            plt.title('K-Means Clustering')
-            plt.colorbar()
-            plt.show()
-
-        def scatter_plot_3d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            fig = px.scatter_3d(principalComponents, x='PC1', y='PC2', z='PC3', color='cluster', title='K-Means '
-                                                                                                       'Clustering')
-            fig.show()
-
-        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
-            """
-            Method to plot the parallel coordinates plot.
-            :param n_components: int - The number of components to consider.
-            :param clusters: ndarray - The cluster labels.
-            :return: Parallel Coordinates Plot
-            """
-            principalComponents = pca(clusters=clusters, n_components=n_components)
-            cols = principalComponents.columns
-            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
-                                          color_continuous_scale=px.colors.diverging.Tealrose, title='K-Means '
-                                                                                                     'Clustering')
-            fig.show()
-
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
             Method to calculate the cluster centers.
@@ -629,18 +582,12 @@ class UVyper:
         print("Performing KMeans Clustering...")
         if n_clusters is None:
             n_clusters = elbow(minK, maxK, metric)
-        # option = int(input("Do you want to save the model? (1/0): "))
         if option == 1:
             kmeans_model_create(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per,
                                 filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = kmeans_model_read(filename)
         else:
             clusters = kmeans(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per)
-        # principalComponents_2d = pca(clusters, n_components=2)
-        # principalComponents_3d = pca(clusters, n_components=3)
-        # scatter_plot_2d(principalComponents_2d)
-        # scatter_plot_3d(principalComponents_3d)
-        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -665,7 +612,7 @@ class UVyper:
         :param n_clusters: int - number of clusters
         :param linkage: str - linkage
         :param affinity: str - affinity
-        :return: labels, summary table, scatter plots
+        :return: ndarray - cluster labels
         """
 
         def silhouettee(estimator: object, df: pd.DataFrame, metric: str = 'euclidean'):
@@ -676,7 +623,6 @@ class UVyper:
             :param metric: str - metric
             :return: float - silhouette score
             """
-            # print(self.df.shape)
             labels = estimator.fit_predict(df)
             score = silhouette_score(df, labels, metric=metric)
             return score
@@ -724,56 +670,6 @@ class UVyper:
             knn.fit(sample_data, clusters)
             clu = knn.predict(self.df)
             return clu
-
-        def pca(clusters: np.ndarray, n_components: int):
-            """
-            Method to perform PCA.
-            :param clusters: ndarray - The cluster labels.
-            :param n_components: int - The number of components to consider.
-            :return: dataframe - The PCA results.
-            """
-            pca = PCA(n_components=n_components)
-            principalComponents = pca.fit_transform(self.df)
-            principalDf = pd.DataFrame(data=principalComponents,
-                                       columns=['PC' + str(i) for i in range(1, n_components + 1)])
-            principalDf['cluster'] = clusters
-            return principalDf
-
-        def scatter_plot_2d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            plt.scatter(principalComponents['PC1'], principalComponents['PC2'], c=principalComponents['cluster'],
-                        cmap=viridis)
-            plt.title('Hierarchical Clustering')
-            plt.colorbar()
-            plt.show()
-
-        def scatter_plot_3d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            fig = px.scatter_3d(principalComponents, x='PC1', y='PC2', z='PC3', color='cluster',
-                                title='Hierarchical Clustering')
-            fig.show()
-
-        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
-            """
-            Method to plot the parallel coordinates plot.
-            :param n_components: int - The number of components to consider.
-            :param clusters: ndarray - The cluster labels.
-            :return: Parallel Coordinates Plot
-            """
-            principalComponents = pca(clusters=clusters, n_components=n_components)
-            cols = principalComponents.columns
-            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
-                                          color_continuous_scale=px.colors.diverging.Tealrose,
-                                          title='Hierarchical Clustering')
-            fig.show()
 
         # @staticmethod
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
@@ -834,11 +730,6 @@ class UVyper:
         clusters, sample_data = hierarchical(n_clusters=n_clusters, linkage=linkage, affinity=affinity,
                                              random_sample_prop=rand_sample_prop)
         clusters = knn(sample_data, clusters)
-        # principalComponents_2d = pca(clusters, n_components=2)
-        # principalComponents_3d = pca(clusters, n_components=3)
-        # scatter_plot_2d(principalComponents_2d)
-        # scatter_plot_3d(principalComponents_3d)
-        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -866,7 +757,7 @@ class UVyper:
         :param covariance_type: str - covariance type
         :param init_params: str - initialization parameters
         :param option: int - 1 - to save the model and 0 - not to save the model
-        :return: labels, summary table, scatter plots
+        :return: ndarray - The cluster labels.
         """
 
         def silhouettee(estimator: object, df: pd.DataFrame, metric: str = 'euclidean'):
@@ -937,55 +828,6 @@ class UVyper:
             clusters = gmm.predict(self.df)
             return clusters
 
-        def pca(clusters: np.ndarray, n_components: int):
-            """
-            Method to perform PCA.
-            :param clusters: ndarray - The cluster labels.
-            :param n_components: int - The number of components to consider.
-            :return: dataframe - The PCA results.
-            """
-            pca = PCA(n_components=n_components)
-            principalComponents = pca.fit_transform(self.df)
-            principalDf = pd.DataFrame(data=principalComponents,
-                                       columns=['PC' + str(i) for i in range(1, n_components + 1)])
-            principalDf['cluster'] = clusters
-            return principalDf
-
-        def scatter_plot_2d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            plt.scatter(principalComponents['PC1'], principalComponents['PC2'], c=principalComponents['cluster'],
-                        cmap=viridis)
-            plt.title('GMM')
-            plt.colorbar()
-            plt.show()
-
-        def scatter_plot_3d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            fig = px.scatter_3d(principalComponents, x='PC1', y='PC2', z='PC3', color='cluster',
-                                title='GMM')
-            fig.show()
-
-        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
-            """
-            Method to plot the parallel coordinates plot.
-            :param n_components: int - The number of components to consider.
-            :param clusters: ndarray - The cluster labels.
-            :return: Parallel Coordinates Plot
-            """
-            principalComponents = pca(clusters=clusters, n_components=n_components)
-            cols = principalComponents.columns
-            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
-                                          color_continuous_scale=px.colors.diverging.Tealrose, title='GMM Clustering')
-            fig.show()
-
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
             Method to calculate the cluster centers.
@@ -1040,18 +882,12 @@ class UVyper:
             if init_params is None:
                 init_params = b['init_params']
                 print("Recommended initialization method: ", init_params)
-        # option = int(input("Do you want to save the model? (1/0): "))
         if option == 1:
             gmm_model_create(n_components=n_components, covariance_type=covariance_type, init_params=init_params,
                              filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = gmm_model_read(filename=filename)
         else:
             clusters = gmm(n_components=n_components, covariance_type=covariance_type, init_params=init_params)
-        # principalComponents_2d = pca(clusters, n_components=2)
-        # principalComponents_3d = pca(clusters, n_components=3)
-        # scatter_plot_2d(principalComponents_2d)
-        # scatter_plot_3d(principalComponents_3d)
-        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -1079,7 +915,7 @@ class UVyper:
         :param branching_factor: int - branching factor
         :param threshold: int - threshold
         :param option: int - 1 - to save the model and 0 - not to save the model
-        :return: labels, summary table, scatter plots
+        :return: ndarray - The cluster labels.
         """
 
         def silhouettee(estimator: object, df: pd.DataFrame, metric: str = 'euclidean'):
@@ -1150,55 +986,6 @@ class UVyper:
             clusters = birch.predict(self.df)
             return clusters
 
-        def pca(clusters: np.ndarray, n_components: int):
-            """
-            Method to perform PCA.
-            :param clusters: ndarray - The cluster labels.
-            :param n_components: int - The number of components to consider.
-            :return: dataframe - The PCA results.
-            """
-            pca = PCA(n_components=n_components)
-            principalComponents = pca.fit_transform(self.df)
-            principalDf = pd.DataFrame(data=principalComponents,
-                                       columns=['PC' + str(i) for i in range(1, n_components + 1)])
-            principalDf['cluster'] = clusters
-            return principalDf
-
-        def scatter_plot_2d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            plt.scatter(principalComponents['PC1'], principalComponents['PC2'], c=principalComponents['cluster'],
-                        cmap=viridis)
-            plt.title('Birch Clustering')
-            plt.colorbar()
-            plt.show()
-
-        def scatter_plot_3d(principalComponents: pd.DataFrame):
-            """
-            Method to plot the PCA results.
-            :param principalComponents: dataframe - The PCA results.
-            :return: Scatter Plot
-            """
-            fig = px.scatter_3d(principalComponents, x='PC1', y='PC2', z='PC3', color='cluster',
-                                title='Birch Clustering')
-            fig.show()
-
-        def parallel_coordinates_plot(clusters: np.ndarray, n_components: int):
-            """
-            Method to plot the parallel coordinates plot.
-            :param n_components: int - The number of components to consider.
-            :param clusters: ndarray - The cluster labels.
-            :return: Parallel Coordinates Plot
-            """
-            principalComponents = pca(clusters=clusters, n_components=n_components)
-            cols = principalComponents.columns
-            fig = px.parallel_coordinates(principalComponents, color='cluster', dimensions=cols,
-                                          color_continuous_scale=px.colors.diverging.Tealrose, title='Birch Clustering')
-            fig.show()
-
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
             Method to calculate the cluster centers.
@@ -1260,11 +1047,6 @@ class UVyper:
             clusters = birch_model_read(filename=filename)
         else:
             clusters = birch(n_clusters=n_clusters, branching_factor=branching_factor, threshold=threshold)
-        # principalComponents_2d = pca(clusters, n_components=2)
-        # principalComponents_3d = pca(clusters, n_components=3)
-        # scatter_plot_2d(principalComponents_2d)
-        # scatter_plot_3d(principalComponents_3d)
-        # parallel_coordinates_plot(clusters, n_components=3)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -1279,7 +1061,7 @@ class UVyper:
     def get_models_summary(self):
         """
         Method to get the summary of the clustering
-        prints the score table and the distribution plot
+        prints the score table and best clustering model
         :return: str - recommended model
         """
 
@@ -1290,16 +1072,6 @@ class UVyper:
             score_df['Rank'] = combined_ranks.rank(method='dense')
             score_df = score_df.sort_values(by=['Rank'])
             return score_df
-
-        def get_distribution_graph(distribution_table: pd.DataFrame):
-            df = distribution_table.pivot(index='Model', columns='cluster', values='percentage')
-            df.reset_index(inplace=True)
-            ax = df.plot(x='Model', kind='bar', stacked=True, figsize=(10, 5), title='Cluster Distribution')
-            plt.xticks(rotation=0)
-            for p in ax.containers:
-                ax.bar_label(p, label_type='center', labels=[f'{val:.2f}%' if val > 0 else '' for val in p.datavalues],
-                             fontsize=10)
-            plt.show()
 
         ranked_score_table = sort_score_table(self.score_table)
         self.score_table = ranked_score_table
@@ -1316,18 +1088,18 @@ class UVyper:
                      birch_cluster_labels: np.ndarray = None, n_variables: int = 5, ):
 
         """
-        Method to save the clustered labels with original dataset
-        :param filename: str - filename to save the parallel coordinates plot (with .png extension)
-        :param dependent_variable:
+        Method to perform post-processing of the clustering results
         :param recommended_model: str - name of the recommended model
         :param org_dataset: str - path to the original dataset
         :param preprocessed_dataset: str - path to the preprocessed dataset
-        :param kmeans_cluster_labels: np.ndarray - cluster labels of KMeans
-        :param hierarchical_cluster_labels: np.ndarray - cluster labels of Hierarchical
-        :param gmm_cluster_labels: np.ndarray - cluster labels of GMM
-        :param birch_cluster_labels: np.ndarray - cluster labels of Birch
-        :param n_variables: int - number of variables to be plotted
-        :return:
+        :param dependent_variable: str - name of the dependent variable
+        :param filename: str - filename to save the parallel coordinates plot (with .png extension)
+        :param kmeans_cluster_labels: np.ndarray - cluster labels of KMeans (optional)
+        :param hierarchical_cluster_labels: np.ndarray - cluster labels of Hierarchical (optional)
+        :param gmm_cluster_labels: np.ndarray - cluster labels of GMM (optional)
+        :param birch_cluster_labels: np.ndarray - cluster labels of Birch (optional)
+        :param n_variables: int - number of differential factors to be considered
+        :return: pd.DataFrame - reduced preprocessed dataset to 2 dimensions using PCA
         """
 
         def save_clustered_dataset(recommended_model: str, org_dataset: str,
@@ -1369,7 +1141,7 @@ class UVyper:
         def parallel_plot(df: pd.DataFrame, features: list, filename: str):
             """
             Method to plot parallel coordinates
-            :param filename: str - filename to save the plot
+            :param filename: str - filename to save the plot (with .png extension)
             :param df: pd.DataFrame - dataframe to be plotted
             :param features: list - list of features to be plotted
             :return:
@@ -1377,7 +1149,9 @@ class UVyper:
             fig = px.parallel_coordinates(df, color='cluster', dimensions=features,
                                           color_continuous_scale=px.colors.diverging.Tealrose, )
             fig.show()
-            # pio.write_image(fig, filename)
+            fig.update_layout(width=1904)
+            fig.update_layout(height=959)
+            pio.write_image(fig, filename)
 
         def pca(preprocessed_data: pd.DataFrame, clusters: np.ndarray, n_components: int = 2):
             """
@@ -1449,27 +1223,6 @@ class UVyper:
         principalComponents = pca(preprocessed_data, clustered_dataset['cluster'], n_components=2)
         temp = principalComponents.drop('cluster', axis=1)
         scatter_plot_2d(principalComponents, recommended_model)
-        # #preprocessed
-        # df = preprocessed_data.copy()
-        # df = df[nv]
-        # df['cluster'] = clustered_dataset['cluster']
-        # cluster_labels = df['cluster'].unique()
-        # feature_score_table = pd.DataFrame(columns=['Feature', 'Rank'])
-        # for cluster_label in cluster_labels:
-        #     fea, ranks = rf(df, cluster_label)
-        #     feature_score_table = feature_score_table.append(pd.DataFrame({'Feature': fea, 'Rank': ranks}),
-        #                                                      ignore_index=True)
-        #
-        # feature_score_table = (feature_score_table.groupby(['Feature']).sum().sort_values(by='Rank', ascending=True)) / len(cluster_labels)
-        # feature_score_table.reset_index(inplace=True)
-        # if n_variables > len(feature_score_table):
-        #     n_variables = len(feature_score_table)
-        # features = list(feature_score_table['Feature'][:n_variables])
-        # differential_factors_df = preprocessed_data[features]
-        # differential_factors_df = min_max_scaling(differential_factors_df)
-        # differential_factors_df['cluster'] = clustered_dataset['cluster']
-        # parallel_plot(differential_factors_df, features)
-        # org_dataset
         df = clustered_dataset.copy()
         df = df.select_dtypes(include=['float64', 'int64'])
         if dependent_variable in df.columns:
@@ -1495,35 +1248,20 @@ class UVyper:
         differential_factors_df = min_max_scaling(differential_factors_df)
         differential_factors_df['cluster'] = clustered_dataset['cluster']
         parallel_plot(differential_factors_df, features, filename=filename)
-        # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['float64', 'int64']).columns, 'mean')
-        # impute_na(clustered_dataset, clustered_dataset.select_dtypes(include=['object']).columns, 'mode')
-        # grouped_by_cluster_centers = clustered_dataset.groupby('cluster').mean()
-        # variance_df = ((grouped_by_cluster_centers / clustered_dataset.drop(['cluster'],
-        #                                                                     axis=1).mean()) * 100).var().sort_values(
-        #     ascending=False)
-        # variance_df = variance_df.to_frame().reset_index()
-        # variance_df = variance_df.rename(columns={'index': 'feature', 0: 'variance'})
-        # if n_variables > len(variance_df):
-        #     n_variables = len(variance_df)
-        # features = list(variance_df['feature'][:n_variables])
-        # differential_factors_df = clustered_dataset[features]
-        # differential_factors_df = min_max_scaling(differential_factors_df)
-        # differential_factors_df['cluster'] = clustered_dataset['cluster']
-        # parallel_plot(differential_factors_df, features)
         return temp
 
-    def playbook(self, filename: str, org_dataset: str, im: str, dependent_variable: str, pca: pd.DataFrame,
+    def playbook(self, filename: str, org_dataset: str, dependent_variable: str, pca: pd.DataFrame, im: str,
                  to_delete: bool = 0,
                  kmeans_cluster_labels: str = None,
                  hierarchical_cluster_labels: str = None, gmm_cluster_labels: str = None,
                  birch_cluster_labels: str = None, ):
         """
         Method to generate playbook
-        :param im:
         :param filename: str - filename to save the playbook
         :param org_dataset: str - path to the original dataset
         :param dependent_variable: str - dependent variable
         :param pca: pd.DataFrame - pca dataframe of preprocess dataset
+        :param im: str - path to the parallel plot png file (with .png extension
         :param to_delete: int - to delete the parallel plot png file after generating playbook
         :param kmeans_cluster_labels: np.ndarray - kmeans cluster labels
         :param hierarchical_cluster_labels: np.ndarray - hierarchical cluster labels
