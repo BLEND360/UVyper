@@ -16,7 +16,8 @@ import ortools
 import ortools.graph.pywrapgraph
 pip install kneed
 pip install yellowbrick==1.5
-pip install scikit-learn==0.24.1 
+pip install scikit-learn==0.24.1
+pip install plotly
 ``` 
 
 #### Sample data used : <a href='https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/cvs_hcb_member_profiling.csv'>`cvs_hcb_member_profiling.csv`</a>
