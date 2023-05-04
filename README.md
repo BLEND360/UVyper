@@ -80,5 +80,6 @@ conda env create --file UVyper.yml
 
 [//]: # (    - <a href = 'https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/dbscan.ipynb'>`dbscan.ipynb`</a> works on the preprocessed data and performs dbscan clustering.)
 
+#### `notebooks` folder contains:
 - `UVyper.py` is the main file which contains the implementation of all the clustering algorithms.
 - `Uvyper.ipynb` is the jupyter notebook which imports `UVyper.py` file and performs all the clustering algorithms on the preprocessed data.
