@@ -1,4 +1,4 @@
-### Download this <a href="https://github.com/BLEND360/UVyper/blob/idc_dev1/UVyper.yaml">file</a> and use the below mentioned command to install the `uvyp` environment
+### Download this <a href="https://github.com/BLEND360/UVyper/blob/idc_dev1/UVyper.yaml">file</a> and use the below mentioned command to install the `UVyper` environment
 
 ```
 conda env create --file UVyper.yml
