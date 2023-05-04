@@ -1,4 +1,4 @@
-name: uvyp
+name: UVyper
 channels:
   - defaults
 dependencies:
@@ -178,4 +178,3 @@ dependencies:
       - xlsxwriter==3.1.0
       - xlwings==0.30.5
       - zipp==3.15.0
-prefix: C:\Users\KarthikKurugodu\anaconda3\envs\uvyp
