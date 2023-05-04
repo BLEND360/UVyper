@@ -861,8 +861,12 @@ class UVyper:
             :return: float - The Davies-Bouldin score.
             """
             scores = pd.DataFrame()
-            sil = silhouette_score(self.df, clusters)
-            dav = davies_bouldin_score(self.df, clusters)
+            if len(set(clusters)) == 1:
+                sil = 0
+                dav = 0
+            else:
+                sil = silhouette_score(self.df, clusters)
+                dav = davies_bouldin_score(self.df, clusters)
             scores['Model'] = ['GMM']
             scores['Silhouette'] = [sil]
             scores['Davies Bouldin'] = [dav]
