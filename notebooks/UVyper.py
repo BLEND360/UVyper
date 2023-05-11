@@ -36,7 +36,8 @@ from kneed import KneeLocator
 from yellowbrick.cluster import KElbowVisualizer
 from matplotlib.cm import viridis
 import scipy.cluster.hierarchy as shc
-from sklearn.cluster import AgglomerativeClustering, DBSCAN, Birch, KMeans
+from sklearn.cluster import AgglomerativeClustering, DBSCAN, Birch, KMeans, MiniBatchKMeans
+from sklearn_extra.cluster import KMedoids
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.neighbors import KNeighborsClassifier
@@ -571,8 +572,12 @@ class UVyper:
             :return: float - The Davies-Bouldin score.
             """
             scores = pd.DataFrame()
-            sil = silhouette_score(self.df, clusters)
-            dav = davies_bouldin_score(self.df, clusters)
+            if len(set(clusters)) == 1:
+                sil = 0
+                dav = 0
+            else:
+                sil = silhouette_score(self.df, clusters)
+                dav = davies_bouldin_score(self.df, clusters)
             scores['Model'] = ['KMeans']
             scores['Silhouette'] = [sil]
             scores['Davies Bouldin'] = [dav]
@@ -597,6 +602,275 @@ class UVyper:
         print(scores)
         print(cluster_centers)
         print("KMeans Clustering Complete!")
+        return clusters
+
+    def kmedoids_w(self, minK: int, maxK: int, metric: str, rand_sample_prop: float, filename: str, dataset: str,
+                   n_clusters: int = None, option: int = 0):
+        """
+        Method to find the clusters using Kmedoids.
+        :param minK: int - The minimum number of clusters to consider.
+        :param maxK: int - The maximum number of clusters to consider.
+        :param metric: str - optional (default='distortion'). The metric used to quantify the
+        quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
+        davies_bouldin, and others.
+        :param rand_sample_prop: float - random sampling proportion
+        :param filename:  float - path of the pickle file
+        :param dataset: float - path of the original dataset
+        :param n_clusters: int - no of clusters
+        :param option: int - 1 - to save the model and 0 - not to save the model
+        :return: ndarray - cluster labels
+        """
+
+        def elbow(minK: int, maxK: int, metric: str = 'distortion'):
+            """
+            Method to identify the optimal number of clusters (k) for a given dataset using the elbow method.
+            :param minK: int - The minimum number of clusters to consider.
+            :param maxK: int - The maximum number of clusters
+            to consider.
+            :param metric: str - optional (default='distortion'). The metric used to quantify the
+            quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
+            davies_bouldin, and others.
+            :return: int - The optimal number of clusters (k).
+            """
+            X = self.df
+            model = KMedoids()
+            visualizer = KElbowVisualizer(model, k=(minK, maxK), metric=metric, timings=False)
+            visualizer.fit(X)
+            visualizer.show()
+            return visualizer.elbow_value_
+
+        def kmedoids(n_clusters: int):
+            """
+            Method to find the clusters using kmedoids.
+            :param n_clusters: no of clusters
+            :return: ndarray - The cluster labels.
+            """
+            kmedoids = KMedoids(n_clusters=n_clusters, random_state=42)
+            clusters = kmedoids.fit_predict(self.df)
+            # clusters = kmeanModel.fit_predict(self.df)
+            return clusters
+
+        def kmedoids_model_create(n_clusters: int, filename: str,
+                                  rand_sample_prop: float = 1.0):
+            """
+            Method to create the kmedoids model as a pickle file.
+            :param filename: name of the pickle file
+            :param n_clusters: no of clusters
+            :param rand_sample_prop: random sampling proportion
+            """
+            sample_data = self.df.sample(frac=rand_sample_prop, random_state=42)
+            kmedoids = KMedoids(n_clusters=n_clusters, random_state=42)
+            kmedoids.fit(sample_data)
+            with open(filename, 'wb') as file:
+                pickle.dump(kmedoids, file)
+
+        def kmedoids_model_read(filename: str):
+            """
+            Method to read the kmedoids model from a pickle file.
+            :param filename: str - The path of the pickle file.
+            :return: ndarray - The cluster labels.
+            """
+            with open(filename, 'rb') as file:
+                kmedoids = pickle.load(file)
+            clusters = kmedoids.predict(self.df)
+            return clusters
+
+        def get_cluster_centers(clusters: np.ndarray, dataset: str):
+            """
+            Method to calculate the cluster centers.
+            :param dataset: str - path to the dataset
+            :param clusters: list - The cluster labels.
+            :return: DataFrame - The cluster centers.
+            """
+            temp = pd.read_csv(dataset)
+            temp['cluster'] = clusters
+            return temp.groupby(clusters).mean()
+
+        def get_cluster_distribution(clusters: np.ndarray):
+            """
+            Method to calculate the distribution of clusters.
+            :param clusters: ndarray - The cluster labels.
+            :return: dataframe - The distribution of clusters.
+            """
+            df = pd.DataFrame()
+            df['cluster'] = sorted(set(clusters))
+            df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
+            df['percentage'] = round(df['count'] / df['count'].sum(), 2)
+            df['Model'] = ['Kmedoids' for _ in range(len(set(clusters)))]
+            df = df.reset_index(drop=True)
+            return df
+
+        def get_scores(clusters: np.ndarray):
+            """
+            Method to calculate the silhouette score and Davies-Bouldin score.
+            :param clusters: list - The cluster labels.
+            :return: float - The silhouette score.
+            :return: float - The Davies-Bouldin score.
+            """
+            scores = pd.DataFrame()
+            if len(set(clusters)) == 1:
+                sil = 0
+                dav = 0
+            else:
+                sil = silhouette_score(self.df, clusters)
+                dav = davies_bouldin_score(self.df, clusters)
+            scores['Model'] = ['Kmedoids']
+            scores['Silhouette'] = [sil]
+            scores['Davies Bouldin'] = [dav]
+            scores['n_clusters'] = [len(set(clusters))]
+            return scores
+
+        print("Performing Kmedoids Clustering...")
+        if n_clusters is None:
+            n_clusters = elbow(minK, maxK, metric)
+        if option == 1:
+            kmedoids_model_create(n_clusters=n_clusters, filename=filename, rand_sample_prop=rand_sample_prop)
+            clusters = kmedoids_model_read(filename)
+        else:
+            clusters = kmedoids(n_clusters=n_clusters)
+        cluster_centers = get_cluster_centers(clusters, dataset)
+        cluster_distribution = get_cluster_distribution(clusters)
+        scores = get_scores(clusters)
+        self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        print(cluster_distribution)
+        print(scores)
+        print(cluster_centers)
+        print("Kmedoids Clustering Complete!")
+        return clusters
+
+    def minibatchkmeans_w(self, minK: int, maxK: int, metric: str, rand_sample_prop: float, filename: str, dataset: str,
+                          n_clusters: int = None, option: int = 0):
+        """
+        Method to find the clusters using minibatchkmeans.
+        :param minK: int - The minimum number of clusters to consider.
+        :param maxK: int - The maximum number of clusters to consider.
+        :param metric: str - optional (default='distortion'). The metric used to quantify the
+        quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
+        davies_bouldin, and others.
+        :param rand_sample_prop: float - random sampling proportion
+        :param filename:  float - path of the pickle file
+        :param dataset: float - path of the original dataset
+        :param n_clusters: int - no of clusters
+        :param option: int - 1 - to save the model and 0 - not to save the model
+        :return: ndarray - cluster labels
+        """
+
+        def elbow(minK: int, maxK: int, metric: str = 'distortion'):
+            """
+            Method to identify the optimal number of clusters (k) for a given dataset using the elbow method.
+            :param minK: int - The minimum number of clusters to consider.
+            :param maxK: int - The maximum number of clusters
+            to consider.
+            :param metric: str - optional (default='distortion'). The metric used to quantify the
+            quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
+            davies_bouldin, and others.
+            :return: int - The optimal number of clusters (k).
+            """
+            X = self.df
+            model = MiniBatchKMeans()
+            visualizer = KElbowVisualizer(model, k=(minK, maxK), metric=metric, timings=False)
+            visualizer.fit(X)
+            visualizer.show()
+            return visualizer.elbow_value_
+
+        def minibatchkmeans(n_clusters: int):
+            """
+            Method to find the clusters using minibatchkmeans.
+            :param n_clusters: no of clusters
+            :return: ndarray - The cluster labels.
+            """
+            mbk = MiniBatchKMeans(n_clusters=n_clusters)
+            clusters = mbk.fit_predict(self.df)
+            return clusters
+
+        def minibatchkmeans_model_create(n_clusters: int, filename: str,
+                                         rand_sample_prop: float = 1.0):
+            """
+            Method to create the minibatchkmeans model as a pickle file.
+            :param filename: name of the pickle file
+            :param n_clusters: no of clusters
+            :param rand_sample_prop: random sampling proportion
+            """
+            sample_data = self.df.sample(frac=rand_sample_prop, random_state=42)
+            mbk = MiniBatchKMeans(n_clusters=n_clusters, random_state=42)
+            mbk.fit(sample_data)
+            with open(filename, 'wb') as file:
+                pickle.dump(mbk, file)
+
+        def minibatchkmeans_model_read(filename: str):
+            """
+            Method to read the minibatchkmeans model from a pickle file.
+            :param filename: str - The path of the pickle file.
+            :return: ndarray - The cluster labels.
+            """
+            with open(filename, 'rb') as file:
+                mbk = pickle.load(file)
+            clusters = mbk.predict(self.df)
+            return clusters
+
+        def get_cluster_centers(clusters: np.ndarray, dataset: str):
+            """
+            Method to calculate the cluster centers.
+            :param dataset: str - path to the dataset
+            :param clusters: list - The cluster labels.
+            :return: DataFrame - The cluster centers.
+            """
+            temp = pd.read_csv(dataset)
+            temp['cluster'] = clusters
+            return temp.groupby(clusters).mean()
+
+        def get_cluster_distribution(clusters: np.ndarray):
+            """
+            Method to calculate the distribution of clusters.
+            :param clusters: ndarray - The cluster labels.
+            :return: dataframe - The distribution of clusters.
+            """
+            df = pd.DataFrame()
+            df['cluster'] = sorted(set(clusters))
+            df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
+            df['percentage'] = round(df['count'] / df['count'].sum(), 2)
+            df['Model'] = ['MiniBatchKmeans' for _ in range(len(set(clusters)))]
+            df = df.reset_index(drop=True)
+            return df
+
+        def get_scores(clusters: np.ndarray):
+            """
+            Method to calculate the silhouette score and Davies-Bouldin score.
+            :param clusters: list - The cluster labels.
+            :return: float - The silhouette score.
+            :return: float - The Davies-Bouldin score.
+            """
+            scores = pd.DataFrame()
+            if len(set(clusters)) == 1:
+                sil = 0
+                dav = 0
+            else:
+                sil = silhouette_score(self.df, clusters)
+                dav = davies_bouldin_score(self.df, clusters)
+            scores['Model'] = ['MiniBatchKmeans']
+            scores['Silhouette'] = [sil]
+            scores['Davies Bouldin'] = [dav]
+            scores['n_clusters'] = [len(set(clusters))]
+            return scores
+
+        print("Performing MiniBatchKmeans Clustering...")
+        if n_clusters is None:
+            n_clusters = elbow(minK, maxK, metric)
+        if option == 1:
+            minibatchkmeans_model_create(n_clusters=n_clusters, filename=filename, rand_sample_prop=rand_sample_prop)
+            clusters = minibatchkmeans_model_read(filename)
+        else:
+            clusters = minibatchkmeans(n_clusters=n_clusters)
+        cluster_centers = get_cluster_centers(clusters, dataset)
+        cluster_distribution = get_cluster_distribution(clusters)
+        scores = get_scores(clusters)
+        self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        print(cluster_distribution)
+        print(scores)
+        print(cluster_centers)
+        print("MiniBatchKmeans Clustering Complete!")
         return clusters
 
     def hierarchical_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, dataset: str,
@@ -705,8 +979,12 @@ class UVyper:
             :return: float - The Davies-Bouldin score.
             """
             scores = pd.DataFrame()
-            sil = silhouette_score(self.df, clusters)
-            dav = davies_bouldin_score(self.df, clusters)
+            if len(set(clusters)) == 1:
+                sil = 0
+                dav = 0
+            else:
+                sil = silhouette_score(self.df, clusters)
+                dav = davies_bouldin_score(self.df, clusters)
             scores['Model'] = ['Hierarchical']
             scores['Silhouette'] = [sil]
             scores['Davies Bouldin'] = [dav]
@@ -1023,8 +1301,12 @@ class UVyper:
             :return: float - The Davies-Bouldin score.
             """
             scores = pd.DataFrame()
-            sil = silhouette_score(self.df, clusters)
-            dav = davies_bouldin_score(self.df, clusters)
+            if len(set(clusters)) == 1:
+                sil = 0
+                dav = 0
+            else:
+                sil = silhouette_score(self.df, clusters)
+                dav = davies_bouldin_score(self.df, clusters)
             scores['Model'] = ['Birch']
             scores['Silhouette'] = [sil]
             scores['Davies Bouldin'] = [dav]
@@ -1089,7 +1371,8 @@ class UVyper:
                      filename: str, kmeans_cluster_labels: np.ndarray = None,
                      hierarchical_cluster_labels: np.ndarray = None,
                      gmm_cluster_labels: np.ndarray = None,
-                     birch_cluster_labels: np.ndarray = None, n_variables: int = 5, ):
+                     birch_cluster_labels: np.ndarray = None, kmedoids_cluster_labels=None,
+                     mini_batch_kmeans_cluster_labels=None, n_variables: int = 5):
 
         """
         Method to perform post-processing of the clustering results
@@ -1102,29 +1385,38 @@ class UVyper:
         :param hierarchical_cluster_labels: np.ndarray - cluster labels of Hierarchical (optional)
         :param gmm_cluster_labels: np.ndarray - cluster labels of GMM (optional)
         :param birch_cluster_labels: np.ndarray - cluster labels of Birch (optional)
+        :param kmedoids_cluster_labels: np.ndarray - cluster labels of Kmedoids (optional)
+        :param mini_batch_kmeans_cluster_labels: np.ndarray - cluster labels of Mini Batch Kmeans (optional)
         :param n_variables: int - number of differential factors to be considered
         :return: pd.DataFrame - reduced preprocessed dataset to 2 dimensions using PCA
         """
 
         def save_clustered_dataset(recommended_model: str, org_dataset: str,
-                                   kmeans_cluster_labels: np.ndarray, hierarchical_cluster_labels: np.ndarray,
-                                   gmm_cluster_labels: np.ndarray,
-                                   birch_cluster_labels: np.ndarray):
+                                   kmeans_cluster_labels: np.ndarray = None,
+                                   hierarchical_cluster_labels: np.ndarray = None,
+                                   gmm_cluster_labels: np.ndarray = None,
+                                   birch_cluster_labels: np.ndarray = None, kmedoids_cluster_labels: np.ndarray = None,
+                                   mini_batch_kmeans_cluster_labels: np.ndarray = None):
 
             temp = pd.read_csv(org_dataset)
             if recommended_model == 'KMeans':
                 temp['cluster'] = kmeans_cluster_labels
-                # temp.to_csv('KMeans_Clustered_' + org_dataset, index=False)
+                temp.to_csv('KMeans_Clustered_' + org_dataset, index=False)
             elif recommended_model == 'Hierarchical':
                 temp['cluster'] = hierarchical_cluster_labels
-                # temp.to_csv('Hierarchical_Clustered_' + org_dataset, index=False)
+                temp.to_csv('Hierarchical_Clustered_' + org_dataset, index=False)
             elif recommended_model == 'GMM':
                 temp['cluster'] = gmm_cluster_labels
-                # temp.to_csv('GMM_Clustered_' + org_dataset, index=False)
+                temp.to_csv('GMM_Clustered_' + org_dataset, index=False)
             elif recommended_model == 'Birch':
                 temp['cluster'] = birch_cluster_labels
-                # temp.to_csv('Birch_Clustered_' + org_dataset, index=False)
-
+                temp.to_csv('Birch_Clustered_' + org_dataset, index=False)
+            elif recommended_model == 'Kmedoids':
+                temp['cluster'] = kmedoids_cluster_labels
+                temp.to_csv('Kmedoids_Clustered_' + org_dataset, index=False)
+            elif recommended_model == 'MiniBatchKmeans':
+                temp['cluster'] = mini_batch_kmeans_cluster_labels
+                temp.to_csv('MiniBatchKmeans_Clustered_' + org_dataset, index=False)
             return temp
 
         def impute_na(df, columns_list: list, method: str):  # mean, mode,  bfill, ffill
@@ -1222,7 +1514,9 @@ class UVyper:
                                                    kmeans_cluster_labels=kmeans_cluster_labels,
                                                    hierarchical_cluster_labels=hierarchical_cluster_labels,
                                                    gmm_cluster_labels=gmm_cluster_labels,
-                                                   birch_cluster_labels=birch_cluster_labels)
+                                                   birch_cluster_labels=birch_cluster_labels,
+                                                   kmedoids_cluster_labels=kmedoids_cluster_labels,
+                                                   mini_batch_kmeans_cluster_labels=mini_batch_kmeans_cluster_labels)
         preprocessed_data = pd.read_csv(preprocessed_dataset)
         principalComponents = pca(preprocessed_data, clustered_dataset['cluster'], n_components=2)
         temp = principalComponents.drop('cluster', axis=1)
@@ -1256,9 +1550,10 @@ class UVyper:
 
     def playbook(self, filename: str, org_dataset: str, dependent_variable: str, pca: pd.DataFrame, im: str,
                  to_delete: bool = 0,
-                 kmeans_cluster_labels: str = None,
-                 hierarchical_cluster_labels: str = None, gmm_cluster_labels: str = None,
-                 birch_cluster_labels: str = None, ):
+                 kmeans_cluster_labels: np.ndarray = None,
+                 hierarchical_cluster_labels: np.ndarray = None, gmm_cluster_labels: np.ndarray = None,
+                 birch_cluster_labels: np.ndarray = None, kmedoids_cluster_labels: np.ndarray = None,
+                 mini_batch_kmeans_cluster_labels: np.ndarray = None):
         """
         Method to generate playbook
         :param filename: str - filename to save the playbook
@@ -1271,6 +1566,8 @@ class UVyper:
         :param hierarchical_cluster_labels: np.ndarray - hierarchical cluster labels
         :param gmm_cluster_labels: np.ndarray - gmm cluster labels
         :param birch_cluster_labels: np.ndarray - birch cluster labels
+        :param kmedoids_cluster_labels: np.ndarray - kmedoids cluster labels
+        :param mini_batch_kmeans_cluster_labels: np.ndarray - mini batch kmeans cluster labels
         :return:
         """
 
@@ -1295,7 +1592,7 @@ class UVyper:
 
             # Write data to worksheet
             ws.merge_cells('A1:' + get_column_letter(df.shape[1]) + '1')
-            ws.cell(row=1, column=1).value = 'Distribution of Clusters'
+            ws.cell(row=1, column=1).value = 'Distribution of Clusters (0-1 Scale)'
             ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
             rows = dataframe_to_rows(df, index=False, header=True)
@@ -1349,8 +1646,9 @@ class UVyper:
             chart.add_data(data, titles_from_data=True)
             chart.set_categories(categories)
 
+            temp = max(df.shape[1], df2.shape[1])
             # Add chart to worksheet
-            ws.add_chart(chart, 'G1')
+            ws.add_chart(chart, get_column_letter(temp+2)+'1')
             ws.sheet_view.showGridLines = False
 
         def summary(workbook, org_dataset: str, dependent_variable: str):
@@ -1434,7 +1732,7 @@ class UVyper:
 
             ws.merge_cells(
                 'A' + str(1 + df.shape[0] + 2) + ':' + get_column_letter(df2.shape[1]) + str(1 + df.shape[0] + 2))
-            ws.cell(row=1 + df.shape[0] + 2, column=1).value = 'Outlier Percentage'
+            ws.cell(row=1 + df.shape[0] + 2, column=1).value = 'Outlier Percentage (in %)'
             ws.cell(row=1 + df.shape[0] + 2, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1 + df.shape[0] + 2, column=1).alignment = Alignment(horizontal='center', vertical='center')
             rows = dataframe_to_rows(df2, index=False, header=True)
@@ -1486,7 +1784,7 @@ class UVyper:
             ws.sheet_view.showGridLines = False
 
         def charts(workbook, pca: pd.DataFrame, im: str, kl: np.ndarray = None, hl: np.ndarray = None,
-                   gl: np.ndarray = None, bl: np.ndarray = None):
+                   gl: np.ndarray = None, bl: np.ndarray = None, kmedl: np.ndarray = None, mbk: np.ndarray = None):
             ws = workbook.create_sheet(0)
             ws.title = 'Charts'
 
@@ -1499,6 +1797,10 @@ class UVyper:
                 plots.append((gl, 'GMM'))
             if bl is not None:
                 plots.append((bl, 'Birch'))
+            if kmedl is not None:
+                plots.append((kmedl, 'Kmedoids'))
+            if mbk is not None:
+                plots.append((mbk, 'MiniBatchKMeans'))
 
             remove = []
             endrow = 0
@@ -1533,7 +1835,8 @@ class UVyper:
         analysis(workbook=wb, outlier_per=self.outlier_per, missing_table=self.missing,
                  cramers_table=self.cramers_matrix)
         remove = charts(workbook=wb, pca=pca, kl=kmeans_cluster_labels, hl=hierarchical_cluster_labels,
-                        gl=gmm_cluster_labels, bl=birch_cluster_labels, im=im)
+                        gl=gmm_cluster_labels, bl=birch_cluster_labels, kmedl=kmedoids_cluster_labels,
+                        mbk=mini_batch_kmeans_cluster_labels, im=im)
         wb.remove(wb['Sheet'])
         wb.save(filename)
         if to_delete:
