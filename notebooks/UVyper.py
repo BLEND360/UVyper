@@ -115,7 +115,7 @@ class Preprocessing:
         :param min_bin_size: float - this parameter is used to determine whether or not a binary variable should be split into two separate variables. If the proportion of the most frequent value in the binary variable is less than min_bin_size, the variable is left as is. Otherwise, two variables are created: one indicating the presence of the most frequent value, and another indicating the missing values.
         :param dependent_variable: string - this parameter specifies the dependent variable of the dataset. This variable is used to train a vyper model to determine which variables should be recoded.
         :param ordinal_variables: list - this parameter is used to specify which variables should be treated as ordinal variables. If a variable is specified as ordinal, it will be recoded using factorization. If it is not specified as ordinal, it will be treated as a numeric variable and recoded using the quantile function.
-        :return: dataframe, list, list, set, list
+        :return: recoded dataframe, numeric variables, binary variables, categorical variables, ordinal variables
         """
         m = self.vyper(dependent_variable)
         original_variables = m.data.columns.to_list()
@@ -258,7 +258,7 @@ class Preprocessing:
     def drop_missing(self, threshold: float):
         """
         Method to drop the columns with missing values greater than the threshold
-        :param threshold: float - specifies the threshold value for the proportion of missing values in a column. Columns with missing values greater than this threshold will be dropped from the dataset.
+        :param threshold: float - (0-1) specifies the threshold value for the proportion of missing values in a column. Columns with missing values greater than this threshold will be dropped from the dataset.
         """
         drop_list = []
         for cols in self.df.columns:
@@ -296,7 +296,7 @@ class Preprocessing:
         :param numerical_variables: list - list of numerical variables to consider for correlation analysis.
         :param ordinal_variables: list - list of ordinal variables to consider for correlation analysis.
         :param threshold: float - threshold value for correlation. Variables with correlation greater than this threshold will be removed from the dataset.
-        :return: dataframe
+        :return: dataframe excluding the highly correlated variables
         """
         if ordinal_variables is None:
             ordinal_variables = []
@@ -387,7 +387,7 @@ class Preprocessing:
         """
         Method to cap the outliers
         :param column_list: list - list of columns to consider for outlier capping
-        :param thold: float - threshold value for outlier capping
+        :param thold: float - threshold value for outlier capping (default = 3)
         :return: pd.DataFrame - dataframe with capped outliers
         """
         for col in column_list:
@@ -1670,7 +1670,7 @@ class UVyper:
             ws.title = 'Describe'
             ws.merge_cells(
                 'A1:' + get_column_letter(df.shape[1] + 1) + '1')
-            ws.cell(row=1, column=1).value = 'Distribution of Clusters'
+            ws.cell(row=1, column=1).value = 'Describe'
             ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
             ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
             for r in dataframe_to_rows(df, index=True, header=True):
