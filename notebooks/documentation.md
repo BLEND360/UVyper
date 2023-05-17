@@ -254,6 +254,8 @@ There are six clustering algorithms available in this tool:
        After the clustering is done, we get the cluster labels. Then we calculate the cluster statistics for example
        davies bouldin score, silhouette score, number of customers in each cluster, percentage of customers in each
        cluster, mean of each variable in each cluster.
+    <br></br>
+    **Note:** In the parameters for linkage=='ward' only affinity=='euclidean' is allowed.
        <br></br>
 5. **GMM:** `gmm_w`
 
