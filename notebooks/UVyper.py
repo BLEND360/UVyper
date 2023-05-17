@@ -998,11 +998,20 @@ class UVyper:
             if n_clusters is None:
                 n_clusters = b['n_clusters']
                 print("Recommended number of clusters: ", n_clusters)
+
             if linkage is None:
                 linkage = b['linkage']
+                while linkage == 'ward' and affinity != 'euclidean' and affinity is not None:
+                    a1, b1, c1 = randomizedSearchCV_hierarchical(grid=param_grid, cv=folds, n_iter=n_iter,
+                                                                 rand_sample_prop=rand_sample_prop)
+                    linkage = b1['linkage']
                 print("Recommended linkage: ", linkage)
+
             if affinity is None:
-                affinity = b['affinity']
+                if linkage == 'ward':
+                    affinity = 'euclidean'
+                else:
+                    affinity = b['affinity']
                 print("Recommended affinity: ", affinity)
 
         clusters, sample_data = hierarchical(n_clusters=n_clusters, linkage=linkage, affinity=affinity,
