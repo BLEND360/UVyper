@@ -874,7 +874,7 @@ class UVyper:
         return clusters
 
     def hierarchical_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, dataset: str,
-                       n_neighbors: int = 1, n_clusters: int = None, linkage: str = None,
+                       n_neighbors: int = 5, n_clusters: int = None, linkage: str = None,
                        affinity: str = None):
         """
         Method to perform hierarchical clustering.
@@ -941,10 +941,17 @@ class UVyper:
             :param n_neighbors: int - number of neighbors
             :return: ndarray - clusters labels for the entire dataset
             """
+            df = self.df.copy()
+            final_data = sample_data.copy()
+            final_data['cluster'] = clusters
             knn = KNeighborsClassifier(n_neighbors=n_neighbors)
             knn.fit(sample_data, clusters)
-            clu = knn.predict(self.df)
-            return clu
+            remaining_data = df.drop(sample_data.index)
+            new_clusters = knn.predict(remaining_data)
+            remaining_data['cluster'] = new_clusters
+            final_data = pd.concat([final_data, remaining_data])
+            final_data.sort_index(inplace=True)
+            return final_data['cluster'].values
 
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
