@@ -4,8 +4,8 @@
 
 This tool is designed to help you segment your customers based on the features available in dataset. It will help you to
 identify the most valuable customers.
-This tool works on vyper environment. To install environment to run ``UVyper``, please follow the instructions in
-the [Installation Manual](https://github.com/BLEND360/UVyper/blob/idc_dev1/Installation_Manual.md) file.
+This tool works on vyper environment. To install environment to run `UVyper`, please follow the instructions in
+the [Installation Manual](https://github.com/BLEND360/UVyper/blob/idc_dev1/Installation%20Manual.md) file.
 This tool has four major steps:
 
 * **Data Preprocessing:** This step is to clean the data and prepare it for the next steps.
@@ -13,6 +13,8 @@ This tool has four major steps:
 * **Postprocessing:** This step is to analyze the clusters and identify the differential features.
 * **Playbook and Visualization:** This step is to visualize the clusters and generate the playbook.
 
+#### Files to look for: [UVyper.py](https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/UVyper.py)
+#### Reference notebook: [UVyper.ipynb](https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/UVyper.ipynb)
 #### Sample data used : <a href='https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/cvs_hcb_member_profiling.csv'>`cvs_hcb_member_profiling.csv`</a>
 
 ## Data Preprocessing
