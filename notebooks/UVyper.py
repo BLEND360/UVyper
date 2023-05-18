@@ -874,7 +874,7 @@ class UVyper:
         return clusters
 
     def hierarchical_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, dataset: str,
-                       n_clusters: int = None, linkage: str = None,
+                       n_neighbors: int = 1, n_clusters: int = None, linkage: str = None,
                        affinity: str = None):
         """
         Method to perform hierarchical clustering.
@@ -883,6 +883,7 @@ class UVyper:
         :param n_iter: int - number of iterations
         :param rand_sample_prop: float - random sample proportion
         :param dataset: str - path to the original dataset
+        :param n_neighbors: int - number of neighbors
         :param n_clusters: int - number of clusters
         :param linkage: str - linkage
         :param affinity: str - affinity
@@ -932,7 +933,7 @@ class UVyper:
             clusters = hierarchical.fit_predict(sample_data)
             return clusters, sample_data
 
-        def knn(sample_data: pd.DataFrame, clusters: np.ndarray, n_neighbors: int = 5):
+        def knn(sample_data: pd.DataFrame, clusters: np.ndarray, n_neighbors: int):
             """
             Method to perform knn
             :param sample_data: dataframe - sample data used in hierarchical method
@@ -945,7 +946,6 @@ class UVyper:
             clu = knn.predict(self.df)
             return clu
 
-        # @staticmethod
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
             """
             Method to calculate the cluster centers.
@@ -1016,7 +1016,7 @@ class UVyper:
 
         clusters, sample_data = hierarchical(n_clusters=n_clusters, linkage=linkage, affinity=affinity,
                                              random_sample_prop=rand_sample_prop)
-        clusters = knn(sample_data, clusters)
+        clusters = knn(sample_data, clusters, n_neighbors=n_neighbors)
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
@@ -1657,7 +1657,7 @@ class UVyper:
 
             temp = max(df.shape[1], df2.shape[1])
             # Add chart to worksheet
-            ws.add_chart(chart, get_column_letter(temp+2)+'1')
+            ws.add_chart(chart, get_column_letter(temp + 2) + '1')
             ws.sheet_view.showGridLines = False
 
         def summary(workbook, org_dataset: str, dependent_variable: str):
