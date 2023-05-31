@@ -1559,13 +1559,15 @@ class UVyper:
         for feature in features:
             print(feature)
         differential_factors_df = clustered_dataset[features]
+        differential_factors_df_1 = differential_factors_df.copy()
+        differential_factors_df_1['cluster'] = clustered_dataset['cluster']
         differential_factors_df = min_max_scaling(differential_factors_df)
         differential_factors_df['cluster'] = clustered_dataset['cluster']
         parallel_plot(differential_factors_df, features, filename=filename)
-        return temp
+        return temp, differential_factors_df_1
 
     def playbook(self, filename: str, org_dataset: str, dependent_variable: str, pca: pd.DataFrame, im: str,
-                 to_delete: bool = 0,
+                 diff_factors_dataframe: pd.DataFrame, to_delete: bool = 0,
                  kmeans_cluster_labels: np.ndarray = None,
                  hierarchical_cluster_labels: np.ndarray = None, gmm_cluster_labels: np.ndarray = None,
                  birch_cluster_labels: np.ndarray = None, kmedoids_cluster_labels: np.ndarray = None,
@@ -1577,6 +1579,7 @@ class UVyper:
         :param dependent_variable: str - dependent variable
         :param pca: pd.DataFrame - pca dataframe of preprocess dataset
         :param im: str - path to the parallel plot png file (with .png extension
+        :param diff_factors_dataframe: differential factors dataframe with best model cluster labels
         :param to_delete: int - to delete the parallel plot png file after generating playbook
         :param kmeans_cluster_labels: np.ndarray - kmeans cluster labels
         :param hierarchical_cluster_labels: np.ndarray - hierarchical cluster labels
@@ -1844,6 +1847,107 @@ class UVyper:
             ws.add_image(im1, f'{chr(67)}{endrow * 2}')
             return remove
 
+        def cluster_avg(workbook, diff_factors_dataframe: pd.DataFrame):
+            features = diff_factors_dataframe.columns
+            ws = workbook.create_sheet(0)
+            ws.title = 'Cluster Average'
+            df = diff_factors_dataframe
+            df = df.groupby(df['cluster']).mean().reset_index()
+            for i in range(1, df.shape[0] + 3):
+                ws.row_dimensions[i].height = 25
+            for i in range(1, df.shape[1] + 1):
+                ws.column_dimensions[get_column_letter(i)].width = 25
+            for i in range(1, len(df.columns) + 1):
+                ws.cell(row=2, column=i).font = Font(bold=True)
+                ws.cell(row=2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            # Write data to worksheet
+            ws.merge_cells('A1:' + get_column_letter(df.shape[1]) + '1')
+            ws.cell(row=1, column=1).value = 'Cluster Average of Best Clustering Model'
+            ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
+            ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df, index=False, header=True)
+            for r_idx, row in enumerate(rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    # if type(value) != str and type(value) != int:
+                    #     # value = str(round(float(value), 2)) + '%'
+                    #     value = '{:.2%}'.format(value/100)
+                    ws.cell(row=r_idx + 1, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1, column=c_idx).alignment = Alignment(horizontal='center', vertical='center')
+                    ws.cell(row=r_idx + 1, column=c_idx).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+            ws.sheet_view.showGridLines = False
+
+        def cluster_wise_feature_analysis(workbook, org_dataset, dependent_variable, diff_factors_dataframe):
+            df = pd.read_csv(org_dataset)
+            m = Model(
+                data=df,
+                dependent_variable=dependent_variable,
+                na_drop_threshold=0.5,  # set here when variables should be dropped 1 = none dropped
+                training_percentage=0.7,  # set here % of dataset that should be training
+                model_type="linear",
+            )
+            not_continuous_exclude = []
+            for key, value in m.variables.show_types().items():
+                if value != 'continuous' and value != 'target_variable' and value != 'exclude':
+                    not_continuous_exclude.append(key)
+            df = df[not_continuous_exclude]
+            df['cluster'] = diff_factors_dataframe['cluster']
+            final_df = pd.DataFrame(columns=['Feature', 'Category', 'cluster', 'counts'])
+            for col in df.columns:
+                if col != 'cluster':
+                    df1 = df.groupby([col, 'cluster']).size().reset_index(name='counts')
+                    df1.insert(0, 'Feature', col)
+                    df1.rename(columns={col: 'Category'}, inplace=True)
+                    df1['percentage'] = df1.groupby(['Feature', 'Category'])['counts'].apply(
+                        lambda x: x / x.sum() * 100)
+                    final_df = pd.concat([final_df, df1], ignore_index=True)
+
+            ws = workbook.create_sheet(0)
+            ws.title = 'Cluster-wise Feature Analysis'
+            df4 = final_df.copy()
+
+            for i in range(1, df4.shape[0] + 3):
+                ws.row_dimensions[i].height = 25
+            for i in range(1, df4.shape[1] + 1):
+                ws.column_dimensions[get_column_letter(i)].width = 25
+            for i in range(1, len(df4.columns) + 1):
+                ws.cell(row=2, column=i).font = Font(bold=True)
+                ws.cell(row=2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            # Write data to worksheet
+            ws.merge_cells('A1:' + get_column_letter(df4.shape[1]) + '1')
+            ws.cell(row=1, column=1).value = 'Cluster Wise Feature Analysis'
+            ws.cell(row=1, column=1).font = Font(bold=True, size=16, underline='single')
+            ws.cell(row=1, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df4, index=False, header=True)
+            nxt = None
+            for r_idx, row in enumerate(rows, 1):
+                prev = nxt
+                for c_idx, value in enumerate(row, 1):
+                    ws.cell(row=r_idx + 1, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1, column=c_idx).alignment = Alignment(horizontal='center', vertical='center')
+                    if c_idx == 1:
+                        nxt = value
+                    if c_idx < len(df4.columns):
+                        ws.cell(row=r_idx, column=c_idx).border = Border(right=thin)
+                    if prev != nxt:
+                        ws.cell(row=r_idx, column=c_idx).border = Border(bottom=thick, right=thin)
+            for i in range(1, len(df4.columns) + 1):
+                ws.cell(row=2, column=i).font = Font(bold=True)
+                ws.cell(row=2, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=2, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=2, column=i).border = Border(top=thick, left=thin, right=thin, bottom=thin)
+
+            for i in range(2, df4.shape[0] + 1):
+                c_idx = len(df4.columns) + 1
+                ws.cell(row=i, column=c_idx).border = Border(left=thick)
+
+            ws.sheet_view.showGridLines = False
+
         wb = openpyxl.Workbook()
         distribution(workbook=wb, distribution_table=self.distribution, score_table=self.score_table)
         summary(workbook=wb, org_dataset=org_dataset, dependent_variable=dependent_variable)
@@ -1853,6 +1957,9 @@ class UVyper:
         remove = charts(workbook=wb, pca=pca, kl=kmeans_cluster_labels, hl=hierarchical_cluster_labels,
                         gl=gmm_cluster_labels, bl=birch_cluster_labels, kmedl=kmedoids_cluster_labels,
                         mbk=mini_batch_kmeans_cluster_labels, im=im)
+        cluster_avg(workbook=wb, diff_factors_dataframe=diff_factors_dataframe)
+        cluster_wise_feature_analysis(workbook=wb, org_dataset=org_dataset, dependent_variable=dependent_variable,
+                                      diff_factors_dataframe=diff_factors_dataframe)
         wb.remove(wb['Sheet'])
         wb.save(filename)
         if to_delete:
