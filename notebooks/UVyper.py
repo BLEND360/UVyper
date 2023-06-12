@@ -1851,6 +1851,7 @@ class UVyper:
             features = diff_factors_dataframe.columns
             ws = workbook.create_sheet(0)
             ws.title = 'Cluster Average'
+
             df = diff_factors_dataframe
             df = df.groupby(df['cluster']).mean().reset_index()
             for i in range(1, df.shape[0] + 3):
@@ -1877,6 +1878,63 @@ class UVyper:
                     ws.cell(row=r_idx + 1, column=c_idx, value=value)
                     ws.cell(row=r_idx + 1, column=c_idx).alignment = Alignment(horizontal='center', vertical='center')
                     ws.cell(row=r_idx + 1, column=c_idx).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            df1 = diff_factors_dataframe
+            df1 = df1.groupby(df1['cluster']).median().reset_index()
+            for i in range(df.shape[0] + 4, df.shape[0] + df1.shape[0] + 6):
+                ws.row_dimensions[i].height = 25
+            for i in range(1, len(df1.columns) + 1):
+                ws.cell(row=8, column=i).font = Font(bold=True)
+                ws.cell(row=8, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=8, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=8, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+            ws.merge_cells('A' + str(df.shape[0] + 4) + ':' + get_column_letter(df1.shape[1]) + str(df.shape[0] + 4))
+            ws.cell(row=7, column=1).value = 'Cluster Median of Best Clustering Model'
+            ws.cell(row=7, column=1).font = Font(bold=True, size=16, underline='single')
+            ws.cell(row=7, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df1, index=False, header=True)
+            for r_idx, row in enumerate(rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    # if type(value) != str and type(value) != int:
+                    #     # value = str(round(float(value), 2)) + '%'
+                    #     value = '{:.2%}'.format(value/100)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 3, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 3, column=c_idx).alignment = Alignment(horizontal='center',
+                                                                                                 vertical='center')
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 3, column=c_idx).border = Border(top=thin, left=thin,
+                                                                                           right=thin, bottom=thin)
+
+            df2 = diff_factors_dataframe
+            df2 = df2.groupby(df2['cluster']).std().reset_index()
+            # df2 = df2.groupby(df2['cluster']).mode().reset_index()
+            for i in range(df.shape[0] + df1.shape[0] + 7, df.shape[0] + df1.shape[0] + df2.shape[0] + 9):
+                ws.row_dimensions[i].height = 25
+            for i in range(1, len(df2.columns) + 1):
+                ws.cell(row=14, column=i).font = Font(bold=True)
+                ws.cell(row=14, column=i).alignment = Alignment(horizontal='center', vertical='center')
+                ws.cell(row=14, column=i).fill = PatternFill("solid", fgColor="A9C4FE")
+                ws.cell(row=14, column=i).border = Border(top=thin, left=thin, right=thin, bottom=thin)
+            ws.merge_cells('A' + str(df.shape[0] + df1.shape[0] + 7) + ':' + get_column_letter(df1.shape[1]) + str(
+                df.shape[0] + df1.shape[0] + 7))
+            ws.cell(row=13, column=1).value = 'Cluster standard deviation of Best Clustering Model'
+            ws.cell(row=13, column=1).font = Font(bold=True, size=16, underline='single')
+            ws.cell(row=13, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            rows = dataframe_to_rows(df2, index=False, header=True)
+            for r_idx, row in enumerate(rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    # if type(value) != str and type(value) != int:
+                    #     # value = str(round(float(value), 2)) + '%'
+                    #     value = '{:.2%}'.format(value/100)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 3 + df1.shape[0] + 3, column=c_idx, value=value)
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 3 + df1.shape[0] + 3, column=c_idx).alignment = Alignment(
+                        horizontal='center',
+                        vertical='center')
+                    ws.cell(row=r_idx + 1 + df.shape[0] + 3 + df1.shape[0] + 3, column=c_idx).border = Border(top=thin,
+                                                                                                              left=thin,
+                                                                                                              right=thin,
+                                                                                                              bottom=thin)
+
             ws.sheet_view.showGridLines = False
 
         def cluster_wise_feature_analysis(workbook, org_dataset, dependent_variable, diff_factors_dataframe):
