@@ -14,7 +14,9 @@ This tool has four major steps:
 * **Playbook and Visualization:** This step is to visualize the clusters and generate the playbook.
 
 #### Files to look for: [UVyper.py](https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/UVyper.py)
+
 #### Reference notebook: [UVyper.ipynb](https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/UVyper.ipynb)
+
 #### Sample data used : <a href='https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/cvs_hcb_member_profiling.csv'>`cvs_hcb_member_profiling.csv`</a>
 
 ## Data Preprocessing
@@ -248,7 +250,8 @@ There are six clustering algorithms available in this tool:
        parameters. If `option` is given as 0 then it applies `fit_predict` on entire dataset.
        But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then we fit and predict on this sample dataset, and we
-       pass this sample dataset along with the labels we get, into KNeighborsClassifier where we consider `n_neighbors` as default 5. Then we predict on entire
+       pass this sample dataset along with the labels we get, into KNeighborsClassifier where we consider `n_neighbors`
+       as default 5. Then we predict on entire
        dataset .
     2. Else we consider parameters that are given and if `option` is given as 0 then it
        applies `fit_predict` on entire dataset.
@@ -259,8 +262,8 @@ There are six clustering algorithms available in this tool:
        After the clustering is done, we get the cluster labels. Then we calculate the cluster statistics for example
        davies bouldin score, silhouette score, number of customers in each cluster, percentage of customers in each
        cluster, mean of each variable in each cluster.
-    <br></br>
-    **Note:** In the parameters for linkage=='ward' only affinity=='euclidean' is allowed.
+       <br></br>
+       **Note:** In the parameters for linkage=='ward' only affinity=='euclidean' is allowed.
        <br></br>
 5. **GMM:** `gmm_w`
 
@@ -353,12 +356,12 @@ There are six clustering algorithms available in this tool:
         :param kmedoids_cluster_labels: np.ndarray - cluster labels of Kmedoids (optional)
         :param mini_batch_kmeans_cluster_labels: np.ndarray - cluster labels of Mini Batch Kmeans (optional)
         :param n_variables: int - number of differential factors to be considered
-        :return: pd.DataFrame - reduced preprocessed dataset to 2 dimensions using PCA
+        :return: pd.DataFrame, pd.DataFrame - reduced preprocessed dataset to 2 dimensions using PCA, dataframe with differential factors and cluster labels
   ```
 
 ## Playbook and Visualization
 
-* Playbook contains 5 sheets:
+* Playbook contains 7 sheets:
     1. **Summary:** This sheet contains the vyper generated summary of the dataset
     2. **Distribution:** This sheet contains the distribution of data in each cluster of each model and the ranked score
        table of models
@@ -366,6 +369,8 @@ There are six clustering algorithms available in this tool:
     4. **Analysis:** This sheet contains the missing value percentage, outlier percentage, cramers_matrix
     5. **Charts:** This sheet contains the scatter plot of the reduced dataset using PCA and the parallel coordinates
        plot of the differential features.
+    6. **Cluster wise Feature statistics:** This sheet contains the statistics of each cluster of best model.
+    7. **Cluster wise Feature analysis:** This sheet contains the analysis of each cluster of best model.
        <br></br>
   ```
   Method to generate playbook
@@ -373,7 +378,8 @@ There are six clustering algorithms available in this tool:
         :param org_dataset: str - path to the original dataset
         :param dependent_variable: str - dependent variable
         :param pca: pd.DataFrame - pca dataframe of preprocess dataset
-        :param im: str - path to the parallel plot png file (with .png extension)
+        :param im: str - path to the parallel plot png file (with .png extension
+        :param diff_factors_dataframe: differential factors dataframe with best model cluster labels
         :param to_delete: int - to delete the parallel plot png file after generating playbook
         :param kmeans_cluster_labels: np.ndarray - kmeans cluster labels
         :param hierarchical_cluster_labels: np.ndarray - hierarchical cluster labels

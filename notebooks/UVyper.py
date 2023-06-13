@@ -1404,7 +1404,7 @@ class UVyper:
         :param kmedoids_cluster_labels: np.ndarray - cluster labels of Kmedoids (optional)
         :param mini_batch_kmeans_cluster_labels: np.ndarray - cluster labels of Mini Batch Kmeans (optional)
         :param n_variables: int - number of differential factors to be considered
-        :return: pd.DataFrame - reduced preprocessed dataset to 2 dimensions using PCA
+        :return: pd.DataFrame, pd.DataFrame - reduced preprocessed dataset to 2 dimensions using PCA, dataframe with differential factors and cluster labels
         """
 
         def save_clustered_dataset(recommended_model: str, org_dataset: str,
@@ -1847,10 +1847,10 @@ class UVyper:
             ws.add_image(im1, f'{chr(67)}{endrow * 2}')
             return remove
 
-        def cluster_avg(workbook, diff_factors_dataframe: pd.DataFrame):
+        def cluster_wise_feature_statistics(workbook, diff_factors_dataframe: pd.DataFrame):
             features = diff_factors_dataframe.columns
             ws = workbook.create_sheet(0)
-            ws.title = 'Cluster Average'
+            ws.title = 'Cluster wise Feature Statistics'
 
             df = diff_factors_dataframe
             df = df.groupby(df['cluster']).mean().reset_index()
@@ -2015,7 +2015,7 @@ class UVyper:
         remove = charts(workbook=wb, pca=pca, kl=kmeans_cluster_labels, hl=hierarchical_cluster_labels,
                         gl=gmm_cluster_labels, bl=birch_cluster_labels, kmedl=kmedoids_cluster_labels,
                         mbk=mini_batch_kmeans_cluster_labels, im=im)
-        cluster_avg(workbook=wb, diff_factors_dataframe=diff_factors_dataframe)
+        cluster_wise_feature_statistics(workbook=wb, diff_factors_dataframe=diff_factors_dataframe)
         cluster_wise_feature_analysis(workbook=wb, org_dataset=org_dataset, dependent_variable=dependent_variable,
                                       diff_factors_dataframe=diff_factors_dataframe)
         wb.remove(wb['Sheet'])
