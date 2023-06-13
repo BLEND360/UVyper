@@ -1,0 +1,12 @@
+lightgbm
+matplotlib
+varclushi
+k-means-constrained==0.6.0
+statsmodels --upgrade
+ortools==9.3.10459
+kneed
+yellowbrick==1.5
+scikit-learn==0.24.1
+plotly
+kaleido==0.1.0.post1
+scikit-learn-extra

@@ -1,0 +1,10 @@
+*.csv
+images/
+*.pkl
+birch.ipynb
+dbscan.ipynb
+evaluation.ipynb
+gmm.ipynb
+hierarchical.ipynb
+kmeans.ipynb
+preprocessing.ipynb
