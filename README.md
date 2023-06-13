@@ -247,18 +247,15 @@ There are six clustering algorithms available in this tool:
    ```
    Now there are 2 cases:
     1. If n_clusters or linkage or affinity is none it performs the randomized grid search to find the optimal
-       parameters. If `large_data_flag` is given as 0 then it applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
-       takes `rand_sample_prop` to get a sample of the dataset. Then we fit and predict on this sample dataset, and we
-       pass this sample dataset along with the labels we get, into KNeighborsClassifier where we consider `n_neighbors`
-       as default 5. Then we predict on entire
-       dataset .
-    2. Else we consider parameters that are given and if `large_data_flag` is given as 0 then it
-       applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
-       takes `rand_sample_prop` to get a sample of the dataset. Then we fit and predict on this sample dataset, and we
-       pass this sample dataset along with the labels we get, into KNeighborsClassifier. Then we predict on entire
-       dataset .
+       parameters.
+
+    2. Else we consider parameters that are given. 
+
+       After the hyperparameter tuning is done, we get the optimal parameters. Then we provide size of the sample
+       dataset to `rand_sample_prop` and it takes a sample of the dataset. Then we fit and predict on this sample
+       dataset, and we pass this sample dataset along with the labels we get, into KNeighborsClassifier where we
+       consider `n_neighbors` as default 5. Then we predict on entire dataset .
+       
        After the clustering is done, we get the cluster labels. Then we calculate the cluster statistics for example
        davies bouldin score, silhouette score, number of customers in each cluster, percentage of customers in each
        cluster, mean of each variable in each cluster.
