@@ -138,21 +138,21 @@ There are six clustering algorithms available in this tool:
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
    ```
    Now there are 2 cases:
     1. If the number of clusters is not given, then this function calculates the optimal number of clusters using
        the
-       elbow method and silhouette score by taking minK and maxK as input. If `option` is given as 0 then it
+       elbow method and silhouette score by taking minK and maxK as input. If `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with
        sample data is saved as pickle file. Then it applies `predict` on entire dataset.
-    2. If the number of clusters is given and if `option` is given as 0 then it
+    2. If the number of clusters is given and if `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with sample data is saved as pickle file. Then it applies `predict` on entire dataset.
 
@@ -173,21 +173,21 @@ There are six clustering algorithms available in this tool:
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
    ```
    Now there are 2 cases:
     1. If the number of clusters is not given, then this function calculates the optimal number of clusters using
        the
-       elbow method and silhouette score by taking minK and maxK as input. If `option` is given as 0 then it
+       elbow method and silhouette score by taking minK and maxK as input. If `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with
        sample data is saved as pickle file. Then it applies `predict` on entire dataset.
-    2. If the number of clusters is given and if `option` is given as 0 then it
+    2. If the number of clusters is given and if `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with sample data is saved as pickle file. Then it applies `predict` on entire dataset.
 
@@ -208,21 +208,21 @@ There are six clustering algorithms available in this tool:
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
    ```
    Now there are 2 cases:
     1. If the number of clusters is not given, then this function calculates the optimal number of clusters using
        the
-       elbow method and silhouette score by taking minK and maxK as input. If `option` is given as 0 then it
+       elbow method and silhouette score by taking minK and maxK as input. If `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with
        sample data is saved as pickle file. Then it applies `predict` on entire dataset.
-    2. If the number of clusters is given and if `option` is given as 0 then it
+    2. If the number of clusters is given and if `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with sample data is saved as pickle file. Then it applies `predict` on entire dataset.
 
@@ -247,15 +247,15 @@ There are six clustering algorithms available in this tool:
    ```
    Now there are 2 cases:
     1. If n_clusters or linkage or affinity is none it performs the randomized grid search to find the optimal
-       parameters. If `option` is given as 0 then it applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       parameters. If `large_data_flag` is given as 0 then it applies `fit_predict` on entire dataset.
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then we fit and predict on this sample dataset, and we
        pass this sample dataset along with the labels we get, into KNeighborsClassifier where we consider `n_neighbors`
        as default 5. Then we predict on entire
        dataset .
-    2. Else we consider parameters that are given and if `option` is given as 0 then it
+    2. Else we consider parameters that are given and if `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then we fit and predict on this sample dataset, and we
        pass this sample dataset along with the labels we get, into KNeighborsClassifier. Then we predict on entire
        dataset .
@@ -278,21 +278,21 @@ There are six clustering algorithms available in this tool:
         :param n_components: int - number of components
         :param covariance_type: str - covariance type
         :param init_params: str - initialization parameters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - The cluster labels.
    ```
    Now there are 2 cases:
     1. If the number of components or covariance type or init_params, is not given, it performs
        randomized grid search to get optimal parameters.
-       If `option` is given as 0 then it
+       If `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with
        sample data is saved as pickle file. Then it applies `predict` on entire dataset.
-    2. If all three parameters are given and if `option` is given as 0 then it
+    2. If all three parameters are given and if `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with sample data is saved as pickle file. Then it applies `predict` on entire dataset.
        <br></br>
@@ -309,22 +309,22 @@ There are six clustering algorithms available in this tool:
         :param n_clusters: int - number of clusters
         :param branching_factor: int - branching factor
         :param threshold: int - threshold
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - The cluster labels.
    ```
    Now there are 2 cases:
     1. If the number of clusters or threshold or branching factor is not given, it performs randomized grid search to
        get optimal
        parameters.
-       If `option` is given as 0 then it
+       If `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with
        sample data is saved as pickle file. Then it applies `predict` on entire dataset.
-    2. If all three parameters are given and if `option` is given as 0 then it
+    2. If all three parameters are given and if `large_data_flag` is given as 0 then it
        applies `fit_predict` on entire dataset.
-       But for larger datasets this might take a lot of time. So, if `option` is given as 1 then it
+       But for larger datasets this might take a lot of time. So, if `large_data_flag` is given as 1 then it
        takes `rand_sample_prop` to get a sample of the dataset. Then it fits the sample data and the model fitted
        with sample data is saved as pickle file. Then it applies `predict` on entire dataset.
        <br></br>

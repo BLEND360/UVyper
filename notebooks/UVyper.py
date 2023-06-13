@@ -457,7 +457,7 @@ class UVyper:
 
     def kmeans_w(self, minK: int, maxK: int, metric: str, min_size_per: float, max_size_per: float,
                  rand_sample_prop: float, filename: str, dataset: str,
-                 n_clusters: int = None, option: int = 0):
+                 n_clusters: int = None, large_data_flag: int = 0):
         """
         Method to find the clusters using KMeans.
         :param minK: int - The minimum number of clusters to consider.
@@ -471,7 +471,7 @@ class UVyper:
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
         """
 
@@ -587,7 +587,7 @@ class UVyper:
         print("Performing KMeans Clustering...")
         if n_clusters is None:
             n_clusters = elbow(minK, maxK, metric)
-        if option == 1:
+        if large_data_flag == 1:
             kmeans_model_create(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per,
                                 filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = kmeans_model_read(filename)
@@ -605,7 +605,7 @@ class UVyper:
         return clusters
 
     def kmedoids_w(self, minK: int, maxK: int, metric: str, rand_sample_prop: float, filename: str, dataset: str,
-                   n_clusters: int = None, option: int = 0):
+                   n_clusters: int = None, large_data_flag: int = 0):
         """
         Method to find the clusters using Kmedoids.
         :param minK: int - The minimum number of clusters to consider.
@@ -617,7 +617,7 @@ class UVyper:
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
         """
 
@@ -723,7 +723,7 @@ class UVyper:
         print("Performing Kmedoids Clustering...")
         if n_clusters is None:
             n_clusters = elbow(minK, maxK, metric)
-        if option == 1:
+        if large_data_flag == 1:
             kmedoids_model_create(n_clusters=n_clusters, filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = kmedoids_model_read(filename)
         else:
@@ -740,7 +740,7 @@ class UVyper:
         return clusters
 
     def minibatchkmeans_w(self, minK: int, maxK: int, metric: str, rand_sample_prop: float, filename: str, dataset: str,
-                          n_clusters: int = None, option: int = 0):
+                          n_clusters: int = None, large_data_flag: int = 0):
         """
         Method to find the clusters using minibatchkmeans.
         :param minK: int - The minimum number of clusters to consider.
@@ -752,7 +752,7 @@ class UVyper:
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
         :param n_clusters: int - no of clusters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
         """
 
@@ -857,7 +857,7 @@ class UVyper:
         print("Performing MiniBatchKmeans Clustering...")
         if n_clusters is None:
             n_clusters = elbow(minK, maxK, metric)
-        if option == 1:
+        if large_data_flag == 1:
             minibatchkmeans_model_create(n_clusters=n_clusters, filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = minibatchkmeans_model_read(filename)
         else:
@@ -1038,7 +1038,7 @@ class UVyper:
     def gmm_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, filename: str, dataset: str,
               n_components: int = None,
               covariance_type: str = None,
-              init_params: str = None, option: int = 0):
+              init_params: str = None, large_data_flag: int = 0):
         """
         Method to perform Gaussian Mixture Model clustering.
         :param param_grid: dict - The parameters to be used for the randomized search cross validation.
@@ -1050,7 +1050,7 @@ class UVyper:
         :param n_components: int - number of components
         :param covariance_type: str - covariance type
         :param init_params: str - initialization parameters
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - The cluster labels.
         """
 
@@ -1180,7 +1180,7 @@ class UVyper:
             if init_params is None:
                 init_params = b['init_params']
                 print("Recommended initialization method: ", init_params)
-        if option == 1:
+        if large_data_flag == 1:
             gmm_model_create(n_components=n_components, covariance_type=covariance_type, init_params=init_params,
                              filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = gmm_model_read(filename=filename)
@@ -1200,7 +1200,7 @@ class UVyper:
     def birch_w(self, param_grid: dict, folds: int, n_iter: int, rand_sample_prop: float, filename: str, dataset: str,
                 n_clusters: int = None,
                 branching_factor: int = None,
-                threshold: float = None, option: int = 0):
+                threshold: float = None, large_data_flag: int = 0):
         """
         Method to perform Birch clustering.
         :param param_grid: dict - The parameters to be used for the randomized search cross validation.
@@ -1212,7 +1212,7 @@ class UVyper:
         :param n_clusters: int - number of clusters
         :param branching_factor: int - branching factor
         :param threshold: int - threshold
-        :param option: int - 1 - to save the model and 0 - not to save the model
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - The cluster labels.
         """
 
@@ -1343,7 +1343,7 @@ class UVyper:
                 threshold = b['threshold']
                 print("Recommended threshold: ", threshold)
 
-        if option == 1:
+        if large_data_flag == 1:
             birch_model_create(n_clusters=n_clusters, branching_factor=branching_factor, threshold=threshold,
                                filename=filename, rand_sample_prop=rand_sample_prop)
             clusters = birch_model_read(filename=filename)
