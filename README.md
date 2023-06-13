@@ -249,9 +249,9 @@ There are six clustering algorithms available in this tool:
     1. If n_clusters or linkage or affinity is none it performs the randomized grid search to find the optimal
        parameters.
 
-    2. Else we consider parameters that are given. 
-
-       After the hyperparameter tuning is done, we get the optimal parameters. Then we provide size of the sample
+    2. Else we consider parameters that are given.
+   
+    After the hyperparameter tuning is done, we get the optimal parameters. Then we provide size of the sample
        dataset to `rand_sample_prop` and it takes a sample of the dataset. Then we fit and predict on this sample
        dataset, and we pass this sample dataset along with the labels we get, into KNeighborsClassifier where we
        consider `n_neighbors` as default 5. Then we predict on entire dataset .
