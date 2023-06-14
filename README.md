@@ -17,7 +17,7 @@ This tool has four major steps:
 
 #### Reference notebook: [UVyper.ipynb](https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/UVyper.ipynb)
 
-#### Sample data used : <a href='https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/cvs_hcb_member_profiling.csv'>`cvs_hcb_member_profiling.csv`</a>
+#### Sample data used : <a href='https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/sample_data.csv'>`sample_data.csv`</a>
 
 ## Data Preprocessing
 
