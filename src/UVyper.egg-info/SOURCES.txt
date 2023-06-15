@@ -1,0 +1,6 @@
+README.md
+setup.py
+src/UVyper.egg-info/PKG-INFO
+src/UVyper.egg-info/SOURCES.txt
+src/UVyper.egg-info/dependency_links.txt
+src/UVyper.egg-info/top_level.txt
