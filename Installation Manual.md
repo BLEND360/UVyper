@@ -10,11 +10,12 @@ Installation Manual</a>
 ## 3. Installing the requirements and UVyper package.
 1. Go to the directory where the UVyper is downloaded.
 2. Extract the UVyper.
-3. After extracting the UVyper, use the below-mentioned command in vyper activated environment in conda prompt to install the required packages
+3. Make sure you are in the vyper activated environment in conda prompt and the path is set to the directory where the UVyper is extracted.
+4. After extracting the UVyper, use the below-mentioned command in vyper activated environment in conda prompt to install the required packages
     ``` 
     pip install -r UVyper/requirements.txt
     ```
-4. After installing the required packages, use the below-mentioned command in vyper activated environment in conda prompt to install the UVyper package.
+5. After installing the required packages, use the below-mentioned command in vyper activated environment in conda prompt to install the UVyper package.
     ```
     python -m pip install -e UVyper.
     ```
