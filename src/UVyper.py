@@ -25,14 +25,12 @@ from sklearn.preprocessing import OrdinalEncoder
 import scipy as stats
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy.stats import chi2, chi2_contingency
-from varclushi import VarClusHi
 
 from scipy.spatial.distance import cdist
 from sklearn.preprocessing import LabelEncoder
 from k_means_constrained import KMeansConstrained
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score, davies_bouldin_score
-from kneed import KneeLocator
 from yellowbrick.cluster import KElbowVisualizer
 from matplotlib.cm import viridis
 import scipy.cluster.hierarchy as shc
@@ -210,6 +208,7 @@ class Preprocessing:
                 bv.remove(var)
                 bv.append(var + "_ind")
 
+        category_variables = list(category_variables)
         return self.df, nv, bv, category_variables, ov
 
     def category_encoding(self, category_variables: list):
@@ -455,9 +454,9 @@ class UVyper:
         self.cramers_matrix = cramers_matrix
         self.missing = missing_values_table
 
-    def kmeans_w(self, minK: int, maxK: int, metric: str, min_size_per: float, max_size_per: float,
-                 rand_sample_prop: float, filename: str, dataset: str,
-                 n_clusters: int = None, large_data_flag: int = 0):
+    def kmeans_con_w(self, minK: int, maxK: int, metric: str, min_size_per: float, max_size_per: float,
+                     rand_sample_prop: float, filename: str, dataset: str,
+                     n_clusters: int = None, large_data_flag: int = 0):
         """
         Method to find the clusters using KMeans.
         :param minK: int - The minimum number of clusters to consider.
@@ -547,6 +546,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(exclude=['object'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -596,8 +596,153 @@ class UVyper:
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        print(cluster_distribution)
+        print(scores)
+        print(cluster_centers)
+        print("KMeans Clustering Complete!")
+        return clusters
+
+    def kmeans_w(self, minK: int, maxK: int, metric: str,
+                 rand_sample_prop: float, filename: str, dataset: str,
+                 n_clusters: int = None, large_data_flag: int = 0):
+        """
+        Method to find the clusters using KMeans.
+        :param minK: int - The minimum number of clusters to consider.
+        :param maxK: int - The maximum number of clusters to consider.
+        :param metric: str - optional (default='distortion'). The metric used to quantify the
+        quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
+        davies_bouldin, and others.
+        :param rand_sample_prop: float - random sampling proportion
+        :param filename:  float - path of the pickle file
+        :param dataset: float - path of the original dataset
+        :param n_clusters: int - no of clusters
+        :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
+        :return: ndarray - cluster labels
+        """
+
+        def elbow(minK: int, maxK: int, metric: str = 'distortion'):
+            """
+            Method to identify the optimal number of clusters (k) for a given dataset using the elbow method.
+            :param minK: int - The minimum number of clusters to consider.
+            :param maxK: int - The maximum number of clusters
+            to consider.
+            :param metric: str - optional (default='distortion'). The metric used to quantify the
+            quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
+            davies_bouldin, and others.
+            :return: int - The optimal number of clusters (k).
+            """
+            X = self.df
+            model = KMeans()
+            visualizer = KElbowVisualizer(model, k=(minK, maxK), metric=metric, timings=False)
+            visualizer.fit(X)
+            visualizer.show()
+            return visualizer.elbow_value_
+
+        def kmeans(n_clusters: int, min_size_per: float, max_size_per: float):
+            """
+            Method to find the clusters using KMeans.
+            :param n_clusters: no of clusters
+            :param min_size_per: percentage of minimum size of cluster
+            :param max_size_per: percentage of maximum size of cluster
+            :return: ndarray - The cluster labels.
+            """
+            kmeanModel = KMeans(n_clusters=n_clusters)
+            clusters = kmeanModel.fit_predict(self.df)
+            return clusters
+
+        def kmeans_model_create(n_clusters: int, min_size_per: float, max_size_per: float, filename: str,
+                                rand_sample_prop: float = 1.0):
+            """
+            Method to create the KMeans model as a pickle file.
+            :param filename: name of the pickle file
+            :param n_clusters: no of clusters
+            :param min_size_per: percentage of minimum size of cluster
+            :param max_size_per: percentage of maximum size of cluster
+            :param rand_sample_prop: random sampling proportion
+            """
+            sample_data = self.df.sample(frac=rand_sample_prop, random_state=42)
+            kmeanModel = KMeans(n_clusters=n_clusters)
+            kmeanModel.fit(sample_data)
+            with open(filename, 'wb') as file:
+                pickle.dump(kmeanModel, file)
+
+        def kmeans_model_read(filename: str):
+            """
+            Method to read the KMeans model from a pickle file.
+            :param filename: str - The path of the pickle file.
+            :return: ndarray - The cluster labels.
+            """
+            with open(filename, 'rb') as file:
+                kmeanModel = pickle.load(file)
+            clusters = kmeanModel.predict(self.df)
+            return clusters
+
+        def get_cluster_centers(clusters: np.ndarray, dataset: str):
+            """
+            Method to calculate the cluster centers.
+            :param dataset: str - path to the dataset
+            :param clusters: list - The cluster labels.
+            :return: DataFrame - The cluster centers.
+            """
+            temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(exclude=['object'])
+            temp['cluster'] = clusters
+            return temp.groupby(clusters).mean()
+
+        def get_cluster_distribution(clusters: np.ndarray):
+            """
+            Method to calculate the distribution of clusters.
+            :param clusters: ndarray - The cluster labels.
+            :return: dataframe - The distribution of clusters.
+            """
+            df = pd.DataFrame()
+            df['cluster'] = sorted(set(clusters))
+            df['count'] = [list(clusters).count(i) for i in sorted(set(clusters))]
+            df['percentage'] = round(df['count'] / df['count'].sum(), 2)
+            df['Model'] = ['Kmeans' for _ in range(len(set(clusters)))]
+            df = df.reset_index(drop=True)
+            return df
+
+        def get_scores(clusters: np.ndarray):
+            """
+            Method to calculate the silhouette score and Davies-Bouldin score.
+            :param clusters: list - The cluster labels.
+            :return: float - The silhouette score.
+            :return: float - The Davies-Bouldin score.
+            """
+            scores = pd.DataFrame()
+            if len(set(clusters)) == 1:
+                sil = 0
+                dav = 0
+            else:
+                sil = silhouette_score(self.df, clusters)
+                dav = davies_bouldin_score(self.df, clusters)
+            scores['Model'] = ['KMeans']
+            scores['Silhouette'] = [sil]
+            scores['Davies Bouldin'] = [dav]
+            scores['n_clusters'] = [len(set(clusters))]
+            return scores
+
+        print("Performing KMeans Clustering...")
+        if n_clusters is None:
+            n_clusters = elbow(minK, maxK, metric)
+        if large_data_flag == 1:
+            kmeans_model_create(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per,
+                                filename=filename, rand_sample_prop=rand_sample_prop)
+            clusters = kmeans_model_read(filename)
+        else:
+            clusters = kmeans(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per)
+        cluster_centers = get_cluster_centers(clusters, dataset)
+        cluster_distribution = get_cluster_distribution(clusters)
+        scores = get_scores(clusters)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
         print(cluster_distribution)
         print(scores)
         print(cluster_centers)
@@ -683,6 +828,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(exclude=['object'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -731,8 +877,10 @@ class UVyper:
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
         print(cluster_centers)
@@ -817,6 +965,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(exclude=['object'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -865,8 +1014,10 @@ class UVyper:
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
         print(cluster_centers)
@@ -961,6 +1112,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(exclude=['object'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1027,8 +1179,10 @@ class UVyper:
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
         print(cluster_centers)
@@ -1130,6 +1284,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(exclude=['object'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1189,8 +1344,10 @@ class UVyper:
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
         print(cluster_centers)
@@ -1292,6 +1449,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(exclude=['object'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1352,8 +1510,10 @@ class UVyper:
         cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
         print(cluster_centers)
@@ -1546,8 +1706,10 @@ class UVyper:
         feature_score_table = pd.DataFrame(columns=['Feature', 'Rank'])
         for cluster_label in cluster_labels:
             fea, ranks = randomforest(df, cluster_label)
-            feature_score_table = feature_score_table.append(pd.DataFrame({'Feature': fea, 'Rank': ranks}),
-                                                             ignore_index=True)
+            # feature_score_table = feature_score_table.append(pd.DataFrame({'Feature': fea, 'Rank': ranks}),
+            #                                                  ignore_index=True)
+            new_row = pd.DataFrame({'Feature': fea, 'Rank': ranks})
+            feature_score_table = pd.concat([feature_score_table, new_row], ignore_index=True)
         feature_score_table = (feature_score_table.groupby(['Feature']).sum().sort_values(by='Rank',
                                                                                           ascending=True)) / len(
             cluster_labels)
@@ -1958,8 +2120,10 @@ class UVyper:
                     df1 = df.groupby([col, 'cluster']).size().reset_index(name='counts')
                     df1.insert(0, 'Feature', col)
                     df1.rename(columns={col: 'Category'}, inplace=True)
-                    df1['percentage'] = df1.groupby(['Feature', 'Category'])['counts'].apply(
-                        lambda x: x / x.sum() * 100)
+                    # df1['percentage'] = df1.groupby(['Feature', 'Category'])['counts'].apply(
+                    #     lambda x: x / x.sum() * 100)
+                    total_counts = df1.groupby('Category')['counts'].transform('sum')
+                    df1['percentage'] = df1['counts'] / total_counts * 100
                     final_df = pd.concat([final_df, df1], ignore_index=True)
 
             ws = workbook.create_sheet(0)
