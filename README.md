@@ -132,6 +132,8 @@ There are six clustering algorithms available in this tool:
         :param metric: str - optional (default='distortion'). The metric used to quantify the
         quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
         davies_bouldin, and others.
+        :param min_size_per: float - percentage of minimum size of cluster
+        :param max_size_per: float - percentage of maximum size of cluster
         :param rand_sample_prop: float - random sampling proportion
         :param filename:  float - path of the pickle file
         :param dataset: float - path of the original dataset
