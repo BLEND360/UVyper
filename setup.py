@@ -6,10 +6,8 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
     url='https://github.com/BLEND360/UVyper/tree/idc_dev1',
-    license='',
-    author='KarthikKurugodu',
-    author_email='',
-    description='',
+    author='Blend360',
+    description='UVyper is a python package for unsupervised learning',
     install_requires=[
         'matplotlib',
         'statsmodels',

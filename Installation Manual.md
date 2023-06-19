@@ -1,5 +1,7 @@
 ## 1. Download the GitHub repository of <a href="https://github.com/BLEND360/UVyper/tree/idc_dev1">UVyper</a>.
 
+Note: Make sure you have the latest version of Vyper installed in your system.(currently v3.1.2)
+
 ## 2. Installing Vyper 
 
 ### Refer to the page 5 of below documentation link to install the latest updated Vyper
