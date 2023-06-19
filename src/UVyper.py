@@ -603,7 +603,7 @@ class UVyper:
         self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("KMeans Clustering Complete!")
         return clusters
 
@@ -741,7 +741,7 @@ class UVyper:
         self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("Kmedoids Clustering Complete!")
         return clusters
 
@@ -878,7 +878,7 @@ class UVyper:
         self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("MiniBatchKmeans Clustering Complete!")
         return clusters
 
@@ -1043,7 +1043,7 @@ class UVyper:
         self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("Hierarchical Clustering Complete!")
         return clusters
 
@@ -1208,7 +1208,7 @@ class UVyper:
         self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("GMM Clustering Complete!")
         return clusters
 
@@ -1374,7 +1374,7 @@ class UVyper:
         self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("Birch Clustering Complete!")
         return clusters
 
