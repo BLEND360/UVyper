@@ -135,8 +135,8 @@ There are six clustering algorithms available in this tool:
         :param min_size_per: float - percentage of minimum size of cluster
         :param max_size_per: float - percentage of maximum size of cluster
         :param rand_sample_prop: float - random sampling proportion
-        :param filename:  float - path of the pickle file
-        :param dataset: float - path of the original dataset
+        :param filename: str - path of the pickle file
+        :param dataset: str - path of the original dataset
         :param n_clusters: int - no of clusters
         :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
@@ -170,8 +170,8 @@ There are six clustering algorithms available in this tool:
         quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
         davies_bouldin, and others.
         :param rand_sample_prop: float - random sampling proportion
-        :param filename:  float - path of the pickle file
-        :param dataset: float - path of the original dataset
+        :param filename: str - path of the pickle file
+        :param dataset: str - path of the original dataset
         :param n_clusters: int - no of clusters
         :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
@@ -205,8 +205,8 @@ There are six clustering algorithms available in this tool:
         quality of clustering. Possible options include distortion, silhouette, calinski_harabasz,
         davies_bouldin, and others.
         :param rand_sample_prop: float - random sampling proportion
-        :param filename:  float - path of the pickle file
-        :param dataset: float - path of the original dataset
+        :param filename: str - path of the pickle file
+        :param dataset: str - path of the original dataset
         :param n_clusters: int - no of clusters
         :param large_data_flag: int - 1 - to save the model and 0 - not to save the model
         :return: ndarray - cluster labels
