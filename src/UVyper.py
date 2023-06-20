@@ -25,14 +25,12 @@ from sklearn.preprocessing import OrdinalEncoder
 import scipy as stats
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from scipy.stats import chi2, chi2_contingency
-from varclushi import VarClusHi
 
 from scipy.spatial.distance import cdist
 from sklearn.preprocessing import LabelEncoder
 from k_means_constrained import KMeansConstrained
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score, davies_bouldin_score
-from kneed import KneeLocator
 from yellowbrick.cluster import KElbowVisualizer
 from matplotlib.cm import viridis
 import scipy.cluster.hierarchy as shc
@@ -210,6 +208,7 @@ class Preprocessing:
                 bv.remove(var)
                 bv.append(var + "_ind")
 
+        category_variables = list(category_variables)
         return self.df, nv, bv, category_variables, ov
 
     def category_encoding(self, category_variables: list):
@@ -536,7 +535,8 @@ class UVyper:
             """
             with open(filename, 'rb') as file:
                 kmeanModel = pickle.load(file)
-            clusters = kmeanModel.predict(self.df)
+            clusters = kmeanModel.predict(self.df, size_min=int((min_size_per / 100) * self.df.shape[0]),
+                                          size_max=int((max_size_per / 100) * self.df.shape[0]))
             return clusters
 
         def get_cluster_centers(clusters: np.ndarray, dataset: str):
@@ -547,6 +547,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -593,14 +594,16 @@ class UVyper:
             clusters = kmeans_model_read(filename)
         else:
             clusters = kmeans(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("KMeans Clustering Complete!")
         return clusters
 
@@ -683,6 +686,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -728,14 +732,16 @@ class UVyper:
             clusters = kmedoids_model_read(filename)
         else:
             clusters = kmedoids(n_clusters=n_clusters)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("Kmedoids Clustering Complete!")
         return clusters
 
@@ -817,6 +823,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -862,14 +869,16 @@ class UVyper:
             clusters = minibatchkmeans_model_read(filename)
         else:
             clusters = minibatchkmeans(n_clusters=n_clusters)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("MiniBatchKmeans Clustering Complete!")
         return clusters
 
@@ -961,6 +970,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1024,14 +1034,16 @@ class UVyper:
         clusters, sample_data = hierarchical(n_clusters=n_clusters, linkage=linkage, affinity=affinity,
                                              random_sample_prop=rand_sample_prop)
         clusters = knn(sample_data, clusters, n_neighbors=n_neighbors)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("Hierarchical Clustering Complete!")
         return clusters
 
@@ -1130,6 +1142,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1186,14 +1199,16 @@ class UVyper:
             clusters = gmm_model_read(filename=filename)
         else:
             clusters = gmm(n_components=n_components, covariance_type=covariance_type, init_params=init_params)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("GMM Clustering Complete!")
         return clusters
 
@@ -1292,6 +1307,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1349,14 +1365,16 @@ class UVyper:
             clusters = birch_model_read(filename=filename)
         else:
             clusters = birch(n_clusters=n_clusters, branching_factor=branching_factor, threshold=threshold)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
-        self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
-        self.score_table = self.score_table.append(scores, ignore_index=True)
+        # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
+        # self.score_table = self.score_table.append(scores, ignore_index=True)
+        self.score_table = pd.concat([self.score_table, scores], ignore_index=True)
+        self.distribution = pd.concat([self.distribution, cluster_distribution], ignore_index=True)
         print(cluster_distribution)
         print(scores)
-        print(cluster_centers)
+        # print(cluster_centers)
         print("Birch Clustering Complete!")
         return clusters
 
@@ -1546,8 +1564,10 @@ class UVyper:
         feature_score_table = pd.DataFrame(columns=['Feature', 'Rank'])
         for cluster_label in cluster_labels:
             fea, ranks = randomforest(df, cluster_label)
-            feature_score_table = feature_score_table.append(pd.DataFrame({'Feature': fea, 'Rank': ranks}),
-                                                             ignore_index=True)
+            # feature_score_table = feature_score_table.append(pd.DataFrame({'Feature': fea, 'Rank': ranks}),
+            #                                                  ignore_index=True)
+            new_row = pd.DataFrame({'Feature': fea, 'Rank': ranks})
+            feature_score_table = pd.concat([feature_score_table, new_row], ignore_index=True)
         feature_score_table = (feature_score_table.groupby(['Feature']).sum().sort_values(by='Rank',
                                                                                           ascending=True)) / len(
             cluster_labels)
@@ -1958,8 +1978,10 @@ class UVyper:
                     df1 = df.groupby([col, 'cluster']).size().reset_index(name='counts')
                     df1.insert(0, 'Feature', col)
                     df1.rename(columns={col: 'Category'}, inplace=True)
-                    df1['percentage'] = df1.groupby(['Feature', 'Category'])['counts'].apply(
-                        lambda x: x / x.sum() * 100)
+                    # df1['percentage'] = df1.groupby(['Feature', 'Category'])['counts'].apply(
+                    #     lambda x: x / x.sum() * 100)
+                    total_counts = df1.groupby('Category')['counts'].transform('sum')
+                    df1['percentage'] = df1['counts'] / total_counts * 100
                     final_df = pd.concat([final_df, df1], ignore_index=True)
 
             ws = workbook.create_sheet(0)
