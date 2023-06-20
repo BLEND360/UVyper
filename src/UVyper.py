@@ -547,7 +547,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
-            temp = temp.select_dtypes(exclude=['object'])
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -594,7 +594,7 @@ class UVyper:
             clusters = kmeans_model_read(filename)
         else:
             clusters = kmeans(n_clusters=n_clusters, min_size_per=min_size_per, max_size_per=max_size_per)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
         # self.score_table = self.score_table.append(scores, ignore_index=True)
@@ -686,7 +686,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
-            temp = temp.select_dtypes(exclude=['object'])
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -732,7 +732,7 @@ class UVyper:
             clusters = kmedoids_model_read(filename)
         else:
             clusters = kmedoids(n_clusters=n_clusters)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
         # self.score_table = self.score_table.append(scores, ignore_index=True)
@@ -823,7 +823,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
-            temp = temp.select_dtypes(exclude=['object'])
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -869,7 +869,7 @@ class UVyper:
             clusters = minibatchkmeans_model_read(filename)
         else:
             clusters = minibatchkmeans(n_clusters=n_clusters)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
         # self.score_table = self.score_table.append(scores, ignore_index=True)
@@ -970,7 +970,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
-            temp = temp.select_dtypes(exclude=['object'])
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1034,7 +1034,7 @@ class UVyper:
         clusters, sample_data = hierarchical(n_clusters=n_clusters, linkage=linkage, affinity=affinity,
                                              random_sample_prop=rand_sample_prop)
         clusters = knn(sample_data, clusters, n_neighbors=n_neighbors)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
         # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
@@ -1142,7 +1142,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
-            temp = temp.select_dtypes(exclude=['object'])
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1199,7 +1199,7 @@ class UVyper:
             clusters = gmm_model_read(filename=filename)
         else:
             clusters = gmm(n_components=n_components, covariance_type=covariance_type, init_params=init_params)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
         # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
@@ -1307,7 +1307,7 @@ class UVyper:
             :return: DataFrame - The cluster centers.
             """
             temp = pd.read_csv(dataset)
-            temp = temp.select_dtypes(exclude=['object'])
+            temp = temp.select_dtypes(include=['int64', 'float64'])
             temp['cluster'] = clusters
             return temp.groupby(clusters).mean()
 
@@ -1365,7 +1365,7 @@ class UVyper:
             clusters = birch_model_read(filename=filename)
         else:
             clusters = birch(n_clusters=n_clusters, branching_factor=branching_factor, threshold=threshold)
-        cluster_centers = get_cluster_centers(clusters, dataset)
+        # cluster_centers = get_cluster_centers(clusters, dataset)
         cluster_distribution = get_cluster_distribution(clusters)
         scores = get_scores(clusters)
         # self.distribution = self.distribution.append(cluster_distribution, ignore_index=True)
