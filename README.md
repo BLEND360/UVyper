@@ -13,11 +13,11 @@ This tool has four major steps:
 * **Postprocessing:** This step is to analyze the clusters and identify the differential features.
 * **Playbook and Visualization:** This step is to visualize the clusters and generate the playbook.
 
-#### Files to look for: [UVyper.py](https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/UVyper.py)
+#### Files to look for: [UVyper.py](https://github.com/BLEND360/UVyper/blob/idc_dev1/src/UVyper.py)
 
-#### Reference notebook: [UVyper.ipynb](https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/UVyper.ipynb)
+#### Reference notebook: [UVyper.ipynb](https://github.com/BLEND360/UVyper/blob/idc_dev1/test/UVyper.ipynb)
 
-#### Sample data used : <a href='https://github.com/BLEND360/UVyper/blob/idc_dev1/notebooks/sample_data.csv'>`sample_data.csv`</a>
+#### Sample data used : <a href='https://github.com/BLEND360/UVyper/blob/idc_dev1/test/sample_data.csv'>`sample_data.csv`</a>
 
 ## Data Preprocessing
 
